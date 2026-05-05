@@ -106,37 +106,42 @@ Save work locally in the browser, export/import project JSON, and export executi
 
 <table>
   <tr>
-    <td width="33%" valign="top" align="center">
+    <td width="33%" align="center" valign="top">
       <img
         src="docs/assets/readme/stratis_readme_01_project_ingestion.png"
         alt="Stratis project and document ingestion workspace"
         width="100%">
-      <br><br>
+    </td>
+    <td width="33%" align="center" valign="top">
+      <img
+        src="docs/assets/readme/stratis_readme_02_project_setup_workflow.png"
+        alt="Stratis project setup and decision workflow workspace"
+        width="100%">
+    </td>
+    <td width="33%" align="center" valign="top">
+      <img
+        src="docs/assets/readme/stratis_readme_03_executive_brief.png"
+        alt="Stratis executive brief preview workspace"
+        width="100%">
+    </td>
+  </tr>
+  <tr>
+    <td width="33%" valign="top">
       <sub>
         <strong>Project & Document Ingestion</strong><br>
         Organises strategy projects, ingests supporting documents, retains extracted text chunks, and stages AI-generated findings for review before they enter the evidence base.
       </sub>
     </td>
-    <td width="33%" valign="top" align="center">
-      <img
-        src="docs/assets/readme/stratis_readme_02_project_setup_workflow.png"
-        alt="Stratis project setup and decision workflow workspace"
-        width="100%">
-      <br><br>
+    <td width="33%" valign="top">
       <sub>
         <strong>Decision Workflow</strong><br>
         Connects the decision question, project context, evidence readiness, assumptions, top option, and risk indicators into a reviewable strategy workflow.
       </sub>
     </td>
-    <td width="33%" valign="top" align="center">
-      <img
-        src="docs/assets/readme/stratis_readme_03_executive_brief.png"
-        alt="Stratis executive brief preview workspace"
-        width="100%">
-      <br><br>
+    <td width="33%" valign="top">
       <sub>
         <strong>Executive Brief Preview</strong><br>
-        Converts the current project state into an executive-ready recommendation, including logic, scoring, assumptions, evidence counts, risks, and exportable brief structure.
+        Converts the current project state into an executive-ready recommendation, including recommendation logic, option scoring, assumptions, evidence counts, risks, and exportable brief structure.
       </sub>
     </td>
   </tr>
@@ -150,24 +155,6 @@ Save work locally in the browser, export/import project JSON, and export executi
 <p>
   The product is intentionally designed around auditability: users can inspect what evidence was used, what assumptions mattered, how options were weighted, and which risks or sensitivity factors could change the recommendation.
 </p>
-### Project and Document Ingestion
-
-<img src="docs/assets/readme/stratis_readme_01_project_ingestion.png" alt="Stratis project and document ingestion interface" width="100%">
-
-### Project Setup and Decision Workflow
-
-<img src="docs/assets/readme/stratis_readme_02_project_setup_workflow.png" alt="Stratis project setup and decision workflow interface" width="100%">
-
-### Executive Brief Preview
-
-<img src="docs/assets/readme/stratis_readme_03_executive_brief.png" alt="Stratis executive brief preview" width="100%">
-
-<details>
-  <summary>View full scrollable application screenshot</summary>
-
-  <img src="docs/assets/readme/full-application-scroll.png" alt="Full Stratis application screenshot" width="100%">
-
-</details>
 
 ---
 
