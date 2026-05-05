@@ -1,8 +1,8 @@
-# Stratis — Strategy & Insight Engine
+# Stratis: Strategy & Insight Engine
 
 A browser-based executive strategy workbench for converting evidence, assumptions, strategic options, financial inputs, and risks into decision-ready briefs with auditable scoring logic.
 
-Stratis is designed for strategy, product, platform, and market analysis workflows where the recommendation matters — but the reasoning trail matters just as much.
+Stratis is designed for strategy, product, platform, and market analysis workflows where the recommendation matters but the reasoning trail matters just as much.
 
 <p align="center">
   <img src="docs/assets/readme/stratis_readme_hero_collage.png"
@@ -103,35 +103,53 @@ Save work locally in the browser, export/import project JSON, and export executi
 ---
 
 ## Application screenshots
+
+## Application screenshots
+
 <table>
   <tr>
-    <td width="50%" align="center">
-      <img src="docs/assets/readme/stratis_readme_01_project_ingestion.png"
-           alt="Project and document ingestion"
-           width="100%">
-      <br>
-      <sub><strong>Project & Document Ingestion</strong></sub>
+    <td width="50%" valign="top" align="center">
+      <img
+        src="docs/assets/readme/stratis_readme_01_project_ingestion.png"
+        alt="Stratis project and document ingestion workspace"
+        width="100%">
+      <br><br>
+      <sub>
+        <strong>Project & Document Ingestion</strong><br>
+        Shows how Stratis organises strategy projects, ingests supporting documents, retains extracted text chunks, and stages AI-generated findings for review before they enter the evidence base.
+      </sub>
     </td>
-    <td width="50%" align="center">
-      <img src="docs/assets/readme/stratis_readme_02_project_setup_workflow.png"
-           alt="Project setup and decision workflow"
-           width="100%">
-      <br>
-      <sub><strong>Decision Workflow</strong></sub>
+    <td width="50%" valign="top" align="center">
+      <img
+        src="docs/assets/readme/stratis_readme_02_project_setup_workflow.png"
+        alt="Stratis project setup and decision workflow workspace"
+        width="100%">
+      <br><br>
+      <sub>
+        <strong>Decision Workflow</strong><br>
+        Shows the operating layer that connects the decision question, project context, evidence readiness, assumptions, top option, and risk indicators into a reviewable strategy workflow.
+      </sub>
     </td>
   </tr>
   <tr>
-    <td width="50%" align="center">
-      <img src="docs/assets/readme/stratis_readme_03_executive_brief.png"
-           alt="Executive brief preview"
-           width="100%">
-      <br>
-      <sub><strong>Executive Brief Preview</strong></sub>
-    </td>
-    <td width="50%" align="center">
-      <strong>What these screenshots show</strong>
+    <td width="50%" valign="top" align="center">
+      <img
+        src="docs/assets/readme/stratis_readme_03_executive_brief.png"
+        alt="Stratis executive brief preview workspace"
+        width="100%">
       <br><br>
-      Evidence ingestion, decision workflow, scoring logic, and executive brief generation.
+      <sub>
+        <strong>Executive Brief Preview</strong><br>
+        Shows how the current project state is converted into an executive-ready recommendation, including recommendation logic, option scoring, assumptions, evidence counts, risks, and exportable brief structure.
+      </sub>
+    </td>
+    <td width="50%" valign="top">
+      <br><br>
+      <strong>Decision-support workflow in practice</strong>
+      <br><br>
+      These views demonstrate how Stratis turns fragmented strategy inputs into a structured, reviewable decision workflow. Source documents are ingested and staged, evidence is separated from assumptions, options are scored through visible criteria, and the final recommendation is assembled into an executive brief       with its reasoning trail intact.
+      <br><br>
+      The product is intentionally designed around auditability: the user can inspect what evidence was used, what assumptions mattered, how options were weighted, and which risks or sensitivity factors could change the recommendation.
     </td>
   </tr>
 </table>
