@@ -104,11 +104,9 @@ Save work locally in the browser, export/import project JSON, and export executi
 
 ## Application screenshots
 
-## Application screenshots
-
 <table>
   <tr>
-    <td width="50%" valign="top" align="center">
+    <td width="33%" valign="top" align="center">
       <img
         src="docs/assets/readme/stratis_readme_01_project_ingestion.png"
         alt="Stratis project and document ingestion workspace"
@@ -116,10 +114,10 @@ Save work locally in the browser, export/import project JSON, and export executi
       <br><br>
       <sub>
         <strong>Project & Document Ingestion</strong><br>
-        Shows how Stratis organises strategy projects, ingests supporting documents, retains extracted text chunks, and stages AI-generated findings for review before they enter the evidence base.
+        Organises strategy projects, ingests supporting documents, retains extracted text chunks, and stages AI-generated findings for review before they enter the evidence base.
       </sub>
     </td>
-    <td width="50%" valign="top" align="center">
+    <td width="33%" valign="top" align="center">
       <img
         src="docs/assets/readme/stratis_readme_02_project_setup_workflow.png"
         alt="Stratis project setup and decision workflow workspace"
@@ -127,12 +125,10 @@ Save work locally in the browser, export/import project JSON, and export executi
       <br><br>
       <sub>
         <strong>Decision Workflow</strong><br>
-        Shows the operating layer that connects the decision question, project context, evidence readiness, assumptions, top option, and risk indicators into a reviewable strategy workflow.
+        Connects the decision question, project context, evidence readiness, assumptions, top option, and risk indicators into a reviewable strategy workflow.
       </sub>
     </td>
-  </tr>
-  <tr>
-    <td width="50%" valign="top" align="center">
+    <td width="33%" valign="top" align="center">
       <img
         src="docs/assets/readme/stratis_readme_03_executive_brief.png"
         alt="Stratis executive brief preview workspace"
@@ -140,20 +136,20 @@ Save work locally in the browser, export/import project JSON, and export executi
       <br><br>
       <sub>
         <strong>Executive Brief Preview</strong><br>
-        Shows how the current project state is converted into an executive-ready recommendation, including recommendation logic, option scoring, assumptions, evidence counts, risks, and exportable brief structure.
+        Converts the current project state into an executive-ready recommendation, including logic, scoring, assumptions, evidence counts, risks, and exportable brief structure.
       </sub>
-    </td>
-    <td width="50%" valign="top">
-      <br><br>
-      <strong>Decision-support workflow in practice</strong>
-      <br><br>
-      These views demonstrate how Stratis turns fragmented strategy inputs into a structured, reviewable decision workflow. Source documents are ingested and staged, evidence is separated from assumptions, options are scored through visible criteria, and the final recommendation is assembled into an executive brief       with its reasoning trail intact.
-      <br><br>
-      The product is intentionally designed around auditability: the user can inspect what evidence was used, what assumptions mattered, how options were weighted, and which risks or sensitivity factors could change the recommendation.
     </td>
   </tr>
 </table>
 
+<p>
+  <strong>Decision-support workflow in practice.</strong><br>
+  These views demonstrate how Stratis turns fragmented strategy inputs into a structured, reviewable decision workflow. Source documents are ingested and staged, evidence is separated from assumptions, options are scored through visible criteria, and the final recommendation is assembled into an executive brief with its reasoning trail intact.
+</p>
+
+<p>
+  The product is intentionally designed around auditability: users can inspect what evidence was used, what assumptions mattered, how options were weighted, and which risks or sensitivity factors could change the recommendation.
+</p>
 ### Project and Document Ingestion
 
 <img src="docs/assets/readme/stratis_readme_01_project_ingestion.png" alt="Stratis project and document ingestion interface" width="100%">
