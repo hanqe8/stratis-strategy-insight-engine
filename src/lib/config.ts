@@ -75,12 +75,16 @@ export function isDuplicateOption(value: string, options: string[], currentIndex
   return options.some((option, index) => index !== currentIndex && normalizeOption(option).replace(/\s+/g, "").toLowerCase() === normalized);
 }
 
+export function sortOptionsAlphabetically<T extends string>(options: T[], formatter: (value: T) => string = (value) => value): T[] {
+  return [...options].sort((a, b) => formatter(a).localeCompare(formatter(b), undefined, { sensitivity: "base" }));
+}
+
 export function ensureStoreConfig(store: Partial<StrategyStore>): StrategyStore {
   return {
     config: {
-      projectTypes: store.config?.projectTypes?.length ? store.config.projectTypes : defaultProjectTypes,
-      projectStatuses: store.config?.projectStatuses?.length ? store.config.projectStatuses : defaultProjectStatuses,
-      sourceTypes: store.config?.sourceTypes?.length ? store.config.sourceTypes : defaultSourceTypes,
+      projectTypes: sortOptionsAlphabetically(store.config?.projectTypes?.length ? store.config.projectTypes : defaultProjectTypes),
+      projectStatuses: sortOptionsAlphabetically(store.config?.projectStatuses?.length ? store.config.projectStatuses : defaultProjectStatuses),
+      sourceTypes: sortOptionsAlphabetically(store.config?.sourceTypes?.length ? store.config.sourceTypes : defaultSourceTypes, formatSourceType),
       openRouterPresets: store.config?.openRouterPresets?.length ? store.config.openRouterPresets : defaultOpenRouterPresets,
       aiSettings: {
         selectedModel: store.config?.aiSettings?.selectedModel ?? defaultOpenRouterPresets[0].id,
@@ -88,7 +92,8 @@ export function ensureStoreConfig(store: Partial<StrategyStore>): StrategyStore 
         siteUrl: store.config?.aiSettings?.siteUrl ?? window.location.origin,
         appTitle: store.config?.aiSettings?.appTitle ?? "Stratis - Strategy & Insight Engine"
       },
-      modelMetadata: store.config?.modelMetadata ?? []
+      modelMetadata: store.config?.modelMetadata ?? [],
+      modelMetadataRetrievedAt: store.config?.modelMetadataRetrievedAt
     },
     projects: store.projects ?? [],
     evidence: store.evidence ?? [],

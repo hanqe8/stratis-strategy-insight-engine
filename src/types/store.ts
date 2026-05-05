@@ -11,6 +11,7 @@ export interface StrategyStore {
     openRouterPresets: OpenRouterModelPreset[];
     aiSettings: AiSettings;
     modelMetadata: OpenRouterModelMetadata[];
+    modelMetadataRetrievedAt?: string;
   };
   projects: Project[];
   evidence: EvidenceItem[];

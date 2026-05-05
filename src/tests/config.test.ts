@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isDuplicateOption, normalizeOption } from "../lib/config";
+import { isDuplicateOption, normalizeOption, sortOptionsAlphabetically } from "../lib/config";
 
 describe("config option validation", () => {
   it("normalizes whitespace", () => {
@@ -14,5 +14,9 @@ describe("config option validation", () => {
   it("detects duplicates regardless of spaces", () => {
     expect(isDuplicateOption("User Provided", ["Official", "UserProvided"])).toBe(true);
     expect(isDuplicateOption("MarketEntry", ["Market Entry", "Platform Strategy"])).toBe(true);
+  });
+
+  it("sorts options alphabetically", () => {
+    expect(sortOptionsAlphabetically(["Recommended", "Draft", "Archived"])).toEqual(["Archived", "Draft", "Recommended"]);
   });
 });

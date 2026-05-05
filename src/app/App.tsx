@@ -1,16 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
+  ArrowDown,
+  ArrowUp,
   Archive,
   BarChart3,
   BookOpen,
   ClipboardList,
+  Copy,
   Download,
   FileText,
   Gauge,
   GitBranch,
   Plus,
-  RefreshCw,
   Settings,
   ShieldCheck,
   Sparkles,
@@ -49,7 +51,7 @@ import {
   setOpenRouterApiKey
 } from "../lib/storage";
 import { applyAiCandidate, extractCandidatesWithOpenRouter, fetchOpenRouterModels } from "../lib/openRouter";
-import { canonicalizeSourceType, ensureStoreConfig, formatSourceType, isDuplicateOption, normalizeOption } from "../lib/config";
+import { canonicalizeSourceType, ensureStoreConfig, formatSourceType, isDuplicateOption, normalizeOption, sortOptionsAlphabetically } from "../lib/config";
 
 type WorkspaceTab =
   | "overview"
@@ -78,6 +80,8 @@ const tabs: { id: WorkspaceTab; label: string; icon: typeof BookOpen }[] = [
   { id: "settings", label: "Settings", icon: ShieldCheck }
 ];
 
+const stratisLogoSrc = `${import.meta.env.BASE_URL}stratis-logo.png`;
+
 const makeId = (prefix: string) =>
   `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -91,6 +95,27 @@ function downloadText(filename: string, text: string, mime = "text/plain") {
   anchor.download = filename;
   anchor.click();
   URL.revokeObjectURL(url);
+}
+
+function formatLocalTimestamp(value?: string): string {
+  if (!value) return "Never";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Unknown";
+  const offsetMinutes = -date.getTimezoneOffset();
+  const sign = offsetMinutes >= 0 ? "+" : "-";
+  const absoluteMinutes = Math.abs(offsetMinutes);
+  const hours = String(Math.floor(absoluteMinutes / 60)).padStart(2, "0");
+  const minutes = String(absoluteMinutes % 60).padStart(2, "0");
+  return `${date.toLocaleString()} UTC${sign}${hours}:${minutes}`;
+}
+
+function resolveOpenRouterModelDisplay(store: StrategyStore): string {
+  const modelId = store.config.aiSettings.customModelId.trim() || store.config.aiSettings.selectedModel;
+  const metadata = store.config.modelMetadata.find((model) => model.id === modelId);
+  if (metadata) return `${metadata.name || metadata.id} (${metadata.id})`;
+  const preset = store.config.openRouterPresets.find((model) => model.id === modelId);
+  if (preset) return `${preset.label} (${preset.id})`;
+  return modelId || "No model selected";
 }
 
 function markdownToPlainText(markdown: string): string {
@@ -117,9 +142,11 @@ export function App() {
     onConfirm: () => void | Promise<void>;
   } | null>(null);
   const [globalSettingsOpen, setGlobalSettingsOpen] = useState(false);
-  const [settingsSection, setSettingsSection] = useState<"openrouter" | "types" | "statuses" | "sources">("openrouter");
+  const [settingsSection, setSettingsSection] = useState<"openrouter" | "data" | "types" | "statuses" | "sources">("openrouter");
   const [uploadStatus, setUploadStatus] = useState("");
   const [aiError, setAiError] = useState("");
+  const [modelRefreshStatus, setModelRefreshStatus] = useState("");
+  const [modelRefreshError, setModelRefreshError] = useState("");
   const [aiProgress, setAiProgress] = useState({
     isRunning: false,
     percent: 0,
@@ -129,19 +156,27 @@ export function App() {
   const [briefPreviewMode, setBriefPreviewMode] = useState<"executive" | "detailed">("executive");
   const [briefDisplayMode, setBriefDisplayMode] = useState<"text" | "markdown">("text");
   const [lastOutputRefresh, setLastOutputRefresh] = useState(() => new Date().toLocaleTimeString());
+  const [lastSavedAt, setLastSavedAt] = useState(() => new Date().toLocaleTimeString());
+  const [backupReminderVisible, setBackupReminderVisible] = useState(false);
   const workspaceRef = useRef<HTMLDivElement | null>(null);
   const [csvRows, setCsvRows] = useState<Record<string, string | number>[]>([]);
   const [xField, setXField] = useState("");
   const [yField, setYField] = useState("");
   const [chartType, setChartType] = useState<"line" | "bar">("line");
 
-  useEffect(() => saveStore(store), [store]);
+  useEffect(() => {
+    saveStore(store);
+    setLastSavedAt(new Date().toLocaleTimeString());
+  }, [store]);
   useEffect(() => {
     loadStoreAsync().then((loaded) => {
       setStore(loaded);
       setActiveProjectId((current) => current || loaded.projects[0]?.id || "");
     });
   }, []);
+  useEffect(() => {
+    if (!openRouterKey.trim()) setWebSearchEnabled(false);
+  }, [openRouterKey]);
 
   const project = store.projects.find((item) => item.id === activeProjectId) ?? store.projects[0];
   const projectId = project?.id ?? "";
@@ -163,10 +198,21 @@ export function App() {
   const activePreviewText = markdownToPlainText(activePreviewBrief);
   const numericFields = getNumericFields(csvRows);
   const summary = yField ? summarizeField(csvRows, yField) : undefined;
+  const sortedProjectTypes = useMemo(() => sortOptionsAlphabetically(store.config.projectTypes), [store.config.projectTypes]);
+  const sortedProjectStatuses = useMemo(() => sortOptionsAlphabetically(store.config.projectStatuses), [store.config.projectStatuses]);
+  const sortedSourceTypes = useMemo(() => sortOptionsAlphabetically(store.config.sourceTypes, formatSourceType), [store.config.sourceTypes]);
+  const openRouterKeyPresent = Boolean(openRouterKey.trim());
+  const selectedOpenRouterModel = useMemo(() => resolveOpenRouterModelDisplay(store), [store]);
 
   function updateStore(next: StrategyStore) {
     setStore(next);
     setLastOutputRefresh(new Date().toLocaleTimeString());
+    setBackupReminderVisible(true);
+  }
+
+  function exportWorkspaceJson() {
+    downloadText("stratis-workspace-backup.json", exportStore(store), "application/json");
+    setBackupReminderVisible(false);
   }
 
   function updateOpenRouterKey(value: string) {
@@ -260,21 +306,44 @@ export function App() {
     setActiveProjectId(id);
   }
 
-  function deleteProject() {
-    if (!project || store.projects.length <= 1) return;
-    const nextProjects = store.projects.filter((item) => item.id !== projectId);
+  function deleteProjectById(targetProjectId: string) {
+    if (store.projects.length <= 1) return;
+    const targetIndex = store.projects.findIndex((item) => item.id === targetProjectId);
+    const nextProjects = store.projects.filter((item) => item.id !== targetProjectId);
+    const targetOptionIds = new Set(store.options.filter((item) => item.projectId === targetProjectId).map((item) => item.id));
+    const targetCriterionIds = new Set(store.criteria.filter((item) => item.projectId === targetProjectId).map((item) => item.id));
     updateStore({
       ...store,
       projects: nextProjects,
-      evidence: store.evidence.filter((item) => item.projectId !== projectId),
-      assumptions: store.assumptions.filter((item) => item.projectId !== projectId),
-      options: store.options.filter((item) => item.projectId !== projectId),
-      criteria: store.criteria.filter((item) => item.projectId !== projectId),
-      premortems: store.premortems.filter((item) => item.projectId !== projectId),
-      decisionLog: store.decisionLog.filter((item) => item.projectId !== projectId),
-      chartInsights: store.chartInsights.filter((item) => item.projectId !== projectId)
+      evidence: store.evidence.filter((item) => item.projectId !== targetProjectId),
+      assumptions: store.assumptions.filter((item) => item.projectId !== targetProjectId),
+      options: store.options.filter((item) => item.projectId !== targetProjectId),
+      criteria: store.criteria.filter((item) => item.projectId !== targetProjectId),
+      scores: store.scores.filter((item) => !targetOptionIds.has(item.optionId) && !targetCriterionIds.has(item.criterionId)),
+      premortems: store.premortems.filter((item) => item.projectId !== targetProjectId),
+      decisionLog: store.decisionLog.filter((item) => item.projectId !== targetProjectId),
+      chartInsights: store.chartInsights.filter((item) => item.projectId !== targetProjectId),
+      extractedDocuments: store.extractedDocuments.filter((item) => item.projectId !== targetProjectId),
+      documentChunks: store.documentChunks.filter((item) => item.projectId !== targetProjectId),
+      aiCandidates: store.aiCandidates.filter((item) => item.projectId !== targetProjectId)
     });
-    setActiveProjectId(nextProjects[0].id);
+    if (activeProjectId === targetProjectId) {
+      setActiveProjectId(nextProjects[Math.max(0, targetIndex - 1)]?.id ?? nextProjects[0]?.id ?? "");
+    }
+  }
+
+  function deleteProject() {
+    if (!project) return;
+    deleteProjectById(projectId);
+  }
+
+  function moveProject(targetProjectId: string, direction: -1 | 1) {
+    const index = store.projects.findIndex((item) => item.id === targetProjectId);
+    const nextIndex = index + direction;
+    if (index < 0 || nextIndex < 0 || nextIndex >= store.projects.length) return;
+    const nextProjects = [...store.projects];
+    [nextProjects[index], nextProjects[nextIndex]] = [nextProjects[nextIndex], nextProjects[index]];
+    updateStore({ ...store, projects: nextProjects });
   }
 
   function addEvidence() {
@@ -526,17 +595,17 @@ export function App() {
   }
 
   async function refreshOpenRouterModels() {
-    setAiError("");
-    setUploadStatus("Refreshing OpenRouter model metadata...");
+    setModelRefreshError("");
+    setModelRefreshStatus("Retrieving OpenRouter model metadata...");
     try {
       const metadata = (await fetchOpenRouterModels(openRouterKey || undefined)).sort((a, b) =>
         (a.name || a.id).localeCompare(b.name || b.id)
       );
-      updateStore({ ...store, config: { ...store.config, modelMetadata: metadata } });
-      setUploadStatus(`Loaded ${metadata.length} OpenRouter model records.`);
+      updateStore({ ...store, config: { ...store.config, modelMetadata: metadata, modelMetadataRetrievedAt: new Date().toISOString() } });
+      setModelRefreshStatus(`Loaded ${metadata.length} OpenRouter model records.`);
     } catch (error) {
-      setAiError(error instanceof Error ? error.message : "Could not refresh OpenRouter models.");
-      setUploadStatus("");
+      setModelRefreshError(error instanceof Error ? error.message : "Could not refresh OpenRouter models.");
+      setModelRefreshStatus("");
     }
   }
 
@@ -609,9 +678,12 @@ export function App() {
     <div className="min-h-screen bg-paper text-ink">
       <header className="no-print border-b border-ink bg-ink px-4 py-3 text-white shadow-sm">
         <div className="mx-auto flex max-w-[1500px] flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-teal">Stratis</p>
-            <h1 className="text-xl font-semibold">Strategy & Insight Engine</h1>
+          <div className="flex items-center gap-3">
+            <img src={stratisLogoSrc} alt="Stratis logo" className="h-11 w-11 object-contain" />
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-teal">STRATIS</p>
+              <h1 className="text-lg font-semibold leading-tight sm:text-xl">Strategy & Insight Engine</h1>
+            </div>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -630,7 +702,7 @@ export function App() {
             <button className="inline-flex items-center gap-2 rounded-md border border-white/20 bg-white/10 px-3 py-2 text-sm" onClick={openSettings}>
               <Settings size={16} /> Settings
             </button>
-            <button className="inline-flex items-center gap-2 rounded-md border border-white/20 bg-white/10 px-3 py-2 text-sm" onClick={() => downloadText("strategy-store.json", exportStore(store), "application/json")}>
+            <button className="inline-flex items-center gap-2 rounded-md border border-white/20 bg-white/10 px-3 py-2 text-sm" onClick={exportWorkspaceJson}>
               <Download size={16} /> JSON
             </button>
             <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-white/20 bg-white/10 px-3 py-2 text-sm">
@@ -652,6 +724,10 @@ export function App() {
                 }}
               />
             </label>
+            <div className="inline-flex items-center gap-2 rounded-md border border-white/15 bg-white/5 px-3 py-2 text-xs text-white/85" title="Project data is saved to this browser's local storage and IndexedDB for this GitHub Pages origin.">
+              <span className="h-2 w-2 rounded-full bg-teal" />
+              Saved locally / {lastSavedAt}
+            </div>
           </div>
         </div>
       </header>
@@ -662,6 +738,7 @@ export function App() {
             <h2 className="text-sm font-semibold uppercase text-moss">Projects</h2>
             <button
               aria-label="Duplicate project"
+              title="Duplicate current project"
               className="rounded-md border border-line p-2"
               onClick={() =>
                 requestConfirmation(
@@ -672,19 +749,62 @@ export function App() {
                 )
               }
             >
-              <RefreshCw size={16} />
+              <Copy size={16} />
             </button>
           </div>
           <div className="space-y-2">
-            {store.projects.map((item) => (
-              <button
+            {store.projects.map((item, index) => (
+              <div
                 key={item.id}
-                className={`w-full rounded-md border p-3 text-left ${item.id === projectId ? "border-ink bg-paper" : "border-line bg-white"}`}
-                onClick={() => setActiveProjectId(item.id)}
+                className={`rounded-md border p-2 ${item.id === projectId ? "border-ink bg-paper" : "border-line bg-white"}`}
               >
-                <span className="block text-sm font-semibold">{item.title}</span>
-                <span className="mt-1 block text-xs text-moss">{item.type} · {item.status}</span>
-              </button>
+                <div className="flex items-start gap-2">
+                  <button
+                    className="min-w-0 flex-1 text-left"
+                    onClick={() => setActiveProjectId(item.id)}
+                    title={`Open ${item.title}`}
+                  >
+                    <span className="block truncate text-sm font-semibold">{item.title}</span>
+                    <span className="mt-1 block truncate text-xs text-moss">{item.type} / {item.status}</span>
+                  </button>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <button
+                      className="rounded-md border border-line bg-white p-1.5 text-moss disabled:cursor-not-allowed disabled:opacity-35"
+                      aria-label={`Move ${item.title} up`}
+                      title={`Move ${item.title} up`}
+                      disabled={index === 0}
+                      onClick={() => moveProject(item.id, -1)}
+                    >
+                      <ArrowUp size={14} />
+                    </button>
+                    <button
+                      className="rounded-md border border-line bg-white p-1.5 text-moss disabled:cursor-not-allowed disabled:opacity-35"
+                      aria-label={`Move ${item.title} down`}
+                      title={`Move ${item.title} down`}
+                      disabled={index === store.projects.length - 1}
+                      onClick={() => moveProject(item.id, 1)}
+                    >
+                      <ArrowDown size={14} />
+                    </button>
+                    <button
+                      className="rounded-md border border-line bg-white p-1.5 text-rust disabled:cursor-not-allowed disabled:opacity-35"
+                      aria-label={`Delete ${item.title}`}
+                      title={`Delete ${item.title}`}
+                      disabled={store.projects.length <= 1}
+                      onClick={() =>
+                        requestConfirmation(
+                          `Delete ${item.title}?`,
+                          "This removes the selected project and all related evidence, assumptions, scores, risks, document chunks, and AI candidates from local storage.",
+                          "Delete project",
+                          () => deleteProjectById(item.id)
+                        )
+                      }
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
         </aside>
@@ -698,6 +818,8 @@ export function App() {
             aiError={aiError}
             aiProgress={aiProgress}
             webSearchEnabled={webSearchEnabled}
+            openRouterKeyPresent={openRouterKeyPresent}
+            selectedOpenRouterModel={selectedOpenRouterModel}
             onWebSearchEnabled={setWebSearchEnabled}
             onUpload={uploadSourceDocuments}
             onRunAi={() =>
@@ -706,7 +828,7 @@ export function App() {
                 webSearchEnabled
                   ? "This sends retained extracted text chunks to OpenRouter and may search current public sources for cross-reference. Online findings return as review candidates and may add token costs from your selected model."
                   : "This sends retained extracted text chunks to OpenRouter using your session API key. Review cost and confidentiality before continuing.",
-                "Analyse",
+                "AI Analysis",
                 () => runAiOnChunks(documentChunks)
               )
             }
@@ -719,6 +841,14 @@ export function App() {
               )
             }
           />
+
+          {backupReminderVisible && (
+            <BackupReminder
+              projectTitle={project.title}
+              onExport={exportWorkspaceJson}
+              onDismiss={() => setBackupReminderVisible(false)}
+            />
+          )}
 
           <div className="rounded-lg border border-line bg-white p-4 shadow-panel">
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -733,7 +863,7 @@ export function App() {
               <label className="grid gap-1 text-sm">
                 <span className="font-medium">Type</span>
                 <select className="min-w-0 truncate rounded-md border border-line px-3 py-2" title={project.type} value={project.type} onChange={(event) => patchProject({ type: event.target.value })}>
-                  {store.config.projectTypes.map((item) => <option key={item}>{item}</option>)}
+                  {sortedProjectTypes.map((item) => <option key={item}>{item}</option>)}
                 </select>
               </label>
               <label className="grid gap-1 text-sm">
@@ -747,7 +877,7 @@ export function App() {
               <label className="grid gap-1 text-sm">
                 <span className="font-medium">Status</span>
                 <select className="min-w-0 truncate rounded-md border border-line px-3 py-2" title={project.status} value={project.status} onChange={(event) => patchProject({ status: event.target.value })}>
-                  {store.config.projectStatuses.map((item) => <option key={item}>{item}</option>)}
+                  {sortedProjectStatuses.map((item) => <option key={item}>{item}</option>)}
                 </select>
               </label>
             </div>
@@ -770,16 +900,16 @@ export function App() {
               <Overview evidence={evidence} assumptions={assumptions} totals={totals} premortems={premortems} />
             )}
             {activeTab === "evidence" && (
-              <EvidenceWorkspace sourceTypes={store.config.sourceTypes} evidence={evidence} onAdd={addEvidence} onUpdate={updateEvidence} onDelete={(id) => updateStore({ ...store, evidence: store.evidence.filter((item) => item.id !== id) })} />
+              <EvidenceWorkspace sourceTypes={sortedSourceTypes} evidence={evidence} onAdd={addEvidence} onUpdate={updateEvidence} onDelete={(id) => updateStore({ ...store, evidence: store.evidence.filter((item) => item.id !== id) })} />
             )}
             {activeTab === "overview" && pendingCandidates.length > 0 && (
               <StructuredAiReviewQueue
                 candidates={aiCandidates}
-                sourceTypes={store.config.sourceTypes}
+                sourceTypes={sortedSourceTypes}
                 onAddSourceType={(value) => {
                   const canonical = canonicalizeSourceType(value);
                   if (!canonical || isDuplicateOption(canonical, store.config.sourceTypes)) return false;
-                  updateStore({ ...store, config: { ...store.config, sourceTypes: [...store.config.sourceTypes, canonical] } });
+                  updateStore({ ...store, config: { ...store.config, sourceTypes: sortOptionsAlphabetically([...store.config.sourceTypes, canonical], formatSourceType) } });
                   return true;
                 }}
                 onUpdate={updateCandidate}
@@ -935,7 +1065,7 @@ export function App() {
       </main>
       {evidenceModalOpen && (
         <EvidenceModal
-          sourceTypes={store.config.sourceTypes}
+          sourceTypes={sortedSourceTypes}
           openRouterReady={Boolean(openRouterKey.trim())}
           onClose={() => setEvidenceModalOpen(false)}
           onSave={commitEvidenceDraft}
@@ -967,17 +1097,17 @@ export function App() {
             if (configModal === "type") {
               updateStore({
                 ...store,
-                config: { ...store.config, projectTypes: [...store.config.projectTypes, normalized] }
+                config: { ...store.config, projectTypes: sortOptionsAlphabetically([...store.config.projectTypes, normalized]) }
               });
             } else if (configModal === "status") {
               updateStore({
                 ...store,
-                config: { ...store.config, projectStatuses: [...store.config.projectStatuses, normalized] }
+                config: { ...store.config, projectStatuses: sortOptionsAlphabetically([...store.config.projectStatuses, normalized]) }
               });
             } else {
               updateStore({
                 ...store,
-                config: { ...store.config, sourceTypes: [...store.config.sourceTypes, normalized] }
+                config: { ...store.config, sourceTypes: sortOptionsAlphabetically([...store.config.sourceTypes, normalized], formatSourceType) }
               });
             }
             setConfigModal(null);
@@ -994,10 +1124,13 @@ export function App() {
             store={store}
             openRouterKey={openRouterKey}
             activeSection={settingsSection}
+            modelRefreshStatus={modelRefreshStatus}
+            modelRefreshError={modelRefreshError}
             onUpdate={updateStore}
             onOpenRouterKey={updateOpenRouterKey}
             onRefreshModels={refreshOpenRouterModels}
             onOpenConfigModal={setConfigModal}
+            onExportJson={exportWorkspaceJson}
           />
         </GlobalSettingsModal>
       )}
@@ -1047,6 +1180,37 @@ function AutoGrowTextarea({
   );
 }
 
+function BackupReminder({
+  projectTitle,
+  onExport,
+  onDismiss
+}: {
+  projectTitle: string;
+  onExport: () => void;
+  onDismiss: () => void;
+}) {
+  return (
+    <section className="mb-4 rounded-lg border border-gold bg-gold/10 p-4 shadow-panel">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-semibold uppercase text-gold">Backup recommended</h2>
+          <p className="mt-1 text-sm text-ink">
+            Your changes to <strong>{projectTitle}</strong> are saved in this browser. Download a JSON backup if you want to continue on another device or protect against cleared browser storage.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button className="inline-flex items-center gap-2 rounded-md bg-ink px-3 py-2 text-sm font-medium text-white" onClick={onExport}>
+            <Download size={16} /> Download Backup JSON
+          </button>
+          <button className="rounded-md border border-line bg-white px-3 py-2 text-sm" onClick={onDismiss}>
+            Dismiss
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function BulkUploadPanel({
   documents,
   chunks,
@@ -1055,6 +1219,8 @@ function BulkUploadPanel({
   aiError,
   aiProgress,
   webSearchEnabled,
+  openRouterKeyPresent,
+  selectedOpenRouterModel,
   onWebSearchEnabled,
   onUpload,
   onRunAi,
@@ -1067,6 +1233,8 @@ function BulkUploadPanel({
   aiError: string;
   aiProgress: { isRunning: boolean; percent: number; label: string };
   webSearchEnabled: boolean;
+  openRouterKeyPresent: boolean;
+  selectedOpenRouterModel: string;
   onWebSearchEnabled: (enabled: boolean) => void;
   onUpload: (files: FileList | File[]) => void;
   onRunAi: () => void;
@@ -1094,16 +1262,30 @@ function BulkUploadPanel({
               onChange={(event) => event.target.files && onUpload(event.target.files)}
             />
           </label>
-          <button className="inline-flex items-center gap-2 rounded-md bg-ink px-3 py-2 text-sm font-medium text-white disabled:opacity-50" disabled={aiProgress.isRunning} onClick={onRunAi}>
-            <Sparkles size={16} /> Analyse
+          <button
+            className="inline-flex items-center gap-2 rounded-md bg-ink px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={aiProgress.isRunning || !openRouterKeyPresent}
+            title={openRouterKeyPresent ? "Run AI analysis on retained extracted text" : "Add a session OpenRouter API key in Settings before running AI Analysis"}
+            onClick={onRunAi}
+          >
+            <Sparkles size={16} /> AI Analysis
           </button>
           <button className="rounded-md border border-line px-3 py-2 text-sm" onClick={onPurge}>
             Purge extracted text
           </button>
         </div>
       </div>
+      <div className={`mt-3 rounded-md border p-3 text-sm ${openRouterKeyPresent ? "border-line bg-paper" : "border-gold bg-gold/10"}`}>
+        {openRouterKeyPresent ? (
+          <p><strong>OpenRouter model for AI Analysis:</strong> {selectedOpenRouterModel}</p>
+        ) : (
+          <p>
+            <strong>No session OpenRouter API key provided.</strong> Uploading and extracting documents still works locally. To run AI Analysis, open <strong>Settings</strong> &gt; <strong>OpenRouter</strong>, paste your API key, choose or retrieve a model, then return here.
+          </p>
+        )}
+      </div>
       <div className="mt-3 flex items-start gap-3 rounded-md border border-line bg-paper p-3 text-sm">
-        <ToggleSwitch enabled={webSearchEnabled} onChange={onWebSearchEnabled} label="Allow Web Search During Analysis" />
+        <ToggleSwitch enabled={webSearchEnabled} onChange={onWebSearchEnabled} label="Allow Web Search During Analysis" disabled={!openRouterKeyPresent} />
         <div className="copy-block">
           <span className="block font-semibold">Allow Web Search During Analysis</span>
           <span className="mt-1 block text-moss">
@@ -1435,11 +1617,13 @@ function Metric({ label, value, warning = false }: { label: string; value: strin
 function ToggleSwitch({
   enabled,
   onChange,
-  label
+  label,
+  disabled = false
 }: {
   enabled: boolean;
   onChange: (enabled: boolean) => void;
   label: string;
+  disabled?: boolean;
 }) {
   return (
     <button
@@ -1447,9 +1631,10 @@ function ToggleSwitch({
       role="switch"
       aria-checked={enabled}
       aria-label={label}
+      disabled={disabled}
       className={`mt-1 inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors ${
         enabled ? "border-teal bg-teal" : "border-line bg-white"
-      }`}
+      } ${disabled ? "cursor-not-allowed opacity-50" : ""}`}
       onClick={() => onChange(!enabled)}
     >
       <span
@@ -1463,17 +1648,86 @@ function ToggleSwitch({
 
 function MarkdownTextView({ markdown, plainText }: { markdown: string; plainText: string }) {
   const lines = markdown.trim().split(/\n/);
+  const elements: React.ReactNode[] = [];
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    const trimmed = line.trim();
+
+    if (isMarkdownTableStart(lines, index)) {
+      const tableLines: string[] = [];
+      while (index < lines.length && lines[index].trim().startsWith("|")) {
+        tableLines.push(lines[index].trim());
+        index += 1;
+      }
+      index -= 1;
+      elements.push(<MarkdownTable key={`table-${index}`} lines={tableLines} />);
+      continue;
+    }
+
+    if (!trimmed) {
+      elements.push(<div key={index} className="h-3" />);
+    } else if (trimmed.startsWith("# ")) {
+      elements.push(<h1 key={index} className="text-lg font-semibold">{formatInlineMarkdown(trimmed.slice(2))}</h1>);
+    } else if (trimmed.startsWith("## ")) {
+      elements.push(<h2 key={index} className="mt-3 text-sm font-semibold uppercase text-moss">{formatInlineMarkdown(trimmed.slice(3))}</h2>);
+    } else if (/^\d+\.\s+/.test(trimmed)) {
+      elements.push(<p key={index} className="ml-4">{formatInlineMarkdown(trimmed)}</p>);
+    } else if (trimmed.startsWith("- ")) {
+      elements.push(<p key={index} className="ml-4 before:mr-2 before:content-['-']">{formatInlineMarkdown(trimmed.slice(2))}</p>);
+    } else {
+      elements.push(<p key={index}>{formatInlineMarkdown(trimmed)}</p>);
+    }
+  }
+
   return (
     <div className="mt-3 max-h-96 overflow-auto rounded-md border border-line bg-white p-4 text-sm leading-6" aria-label={plainText.slice(0, 120)}>
-      {lines.map((line, index) => {
-        const trimmed = line.trim();
-        if (!trimmed) return <div key={index} className="h-3" />;
-        if (trimmed.startsWith("# ")) return <h1 key={index} className="text-lg font-semibold">{formatInlineMarkdown(trimmed.slice(2))}</h1>;
-        if (trimmed.startsWith("## ")) return <h2 key={index} className="mt-3 text-sm font-semibold uppercase text-moss">{formatInlineMarkdown(trimmed.slice(3))}</h2>;
-        if (/^\d+\.\s+/.test(trimmed)) return <p key={index} className="ml-4">{formatInlineMarkdown(trimmed)}</p>;
-        if (trimmed.startsWith("- ")) return <p key={index} className="ml-4 before:mr-2 before:content-['-']">{formatInlineMarkdown(trimmed.slice(2))}</p>;
-        return <p key={index}>{formatInlineMarkdown(trimmed)}</p>;
-      })}
+      {elements}
+    </div>
+  );
+}
+
+function isMarkdownTableStart(lines: string[], index: number): boolean {
+  return Boolean(
+    lines[index]?.trim().startsWith("|") &&
+      lines[index + 1]?.trim().startsWith("|") &&
+      /^\|\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?$/.test(lines[index + 1].trim())
+  );
+}
+
+function splitMarkdownTableRow(line: string): string[] {
+  return line
+    .trim()
+    .replace(/^\|/, "")
+    .replace(/\|$/, "")
+    .split(/(?<!\\)\|/)
+    .map((cell) => cell.replace(/\\\|/g, "|").trim());
+}
+
+function MarkdownTable({ lines }: { lines: string[] }) {
+  const headers = splitMarkdownTableRow(lines[0]);
+  const rows = lines.slice(2).map(splitMarkdownTableRow);
+
+  return (
+    <div className="my-3 overflow-x-auto rounded-md border border-line">
+      <table className="min-w-[720px] w-full text-left text-xs">
+        <thead className="bg-paper">
+          <tr>
+            {headers.map((header) => (
+              <th key={header} className="p-2">{formatInlineMarkdown(header)}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, rowIndex) => (
+            <tr key={rowIndex} className="border-t border-line align-top">
+              {row.map((cell, cellIndex) => (
+                <td key={`${rowIndex}-${cellIndex}`} className="p-2">{formatInlineMarkdown(cell)}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -1535,7 +1789,7 @@ function EvidenceWorkspace({ sourceTypes, evidence, onAdd, onUpdate, onDelete }:
                 {confidenceLevels.map((level) => <option key={level}>{level}</option>)}
               </select>
               <input className="w-24 rounded-md border border-line px-3 py-2" type="number" min={1} max={5} value={item.relevance} onChange={(event) => onUpdate(item.id, { relevance: Number(event.target.value) as EvidenceItem["relevance"] })} aria-label="Relevance" />
-              <button className="ml-auto rounded-md border border-line p-2 text-rust" aria-label="Delete evidence" onClick={() => onDelete(item.id)}><Trash2 size={16} /></button>
+              <button className="ml-auto rounded-md border border-line p-2 text-rust" aria-label="Delete evidence" title="Delete evidence" onClick={() => onDelete(item.id)}><Trash2 size={16} /></button>
             </div>
           </div>
         ))}
@@ -1578,7 +1832,7 @@ function EvidenceModal({
       <div className="max-h-[92vh] w-full max-w-3xl overflow-auto rounded-lg bg-white p-4 shadow-panel">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-lg font-semibold">Add Evidence</h2>
-          <button className="rounded-md border border-line p-2" aria-label="Close evidence modal" onClick={onClose}>
+          <button className="rounded-md border border-line p-2" aria-label="Close evidence modal" title="Close evidence modal" onClick={onClose}>
             <X size={16} />
           </button>
         </div>
@@ -1677,7 +1931,7 @@ function AddConfigOptionModal({
       <div className="w-full max-w-md rounded-lg bg-white p-4 shadow-panel">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-lg font-semibold">{title}</h2>
-          <button className="rounded-md border border-line p-2" aria-label="Close dialog" onClick={onClose}>
+          <button className="rounded-md border border-line p-2" aria-label="Close dialog" title="Close dialog" onClick={onClose}>
             <X size={16} />
           </button>
         </div>
@@ -1750,13 +2004,14 @@ function GlobalSettingsModal({
   onClose,
   children
 }: {
-  activeSection: "openrouter" | "types" | "statuses" | "sources";
-  onSection: (section: "openrouter" | "types" | "statuses" | "sources") => void;
+  activeSection: "openrouter" | "data" | "types" | "statuses" | "sources";
+  onSection: (section: "openrouter" | "data" | "types" | "statuses" | "sources") => void;
   onClose: () => void;
   children: React.ReactNode;
 }) {
-  const sections: { id: "openrouter" | "types" | "statuses" | "sources"; label: string }[] = [
+  const sections: { id: "openrouter" | "data" | "types" | "statuses" | "sources"; label: string }[] = [
     { id: "openrouter", label: "OpenRouter" },
+    { id: "data", label: "Data & Backup" },
     { id: "types", label: "Project Types" },
     { id: "statuses", label: "Project Statuses" },
     { id: "sources", label: "Source Categories" }
@@ -1766,7 +2021,7 @@ function GlobalSettingsModal({
       <div className="flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg bg-white shadow-panel">
         <div className="shrink-0 flex items-center justify-between border-b border-line p-4">
           <h2 className="text-lg font-semibold">Settings and Configuration</h2>
-          <button className="rounded-md border border-line p-2" aria-label="Close settings" onClick={onClose}><X size={16} /></button>
+          <button className="rounded-md border border-line p-2" aria-label="Close settings" title="Close settings" onClick={onClose}><X size={16} /></button>
         </div>
         <div className="grid min-h-0 grid-cols-1 overflow-hidden md:grid-cols-[220px_minmax(0,1fr)]">
           <aside className="border-b border-line bg-paper p-3 md:border-b-0 md:border-r">
@@ -1875,7 +2130,7 @@ function DecisionModelWorkspace({
                       <input className="mb-1 w-full rounded border border-line px-2 py-1" value={criterion.name} onChange={(event) => onUpdate({ ...store, criteria: store.criteria.map((item) => item.id === criterion.id ? { ...item, name: event.target.value } : item) })} aria-label="Criterion name" />
                       <input className="w-20 rounded border border-line px-2 py-1" type="number" value={criterion.weight} onChange={(event) => onUpdate({ ...store, criteria: store.criteria.map((item) => item.id === criterion.id ? { ...item, weight: Number(event.target.value) } : item) })} aria-label="Criterion weight" />%
                     </div>
-                    <button className="rounded border border-line p-1 text-rust" aria-label={`Delete criterion ${criterion.name}`} onClick={() => onDeleteCriterion(criterion)}>
+                    <button className="rounded border border-line p-1 text-rust" aria-label={`Delete criterion ${criterion.name}`} title={`Delete criterion ${criterion.name}`} onClick={() => onDeleteCriterion(criterion)}>
                       <Trash2 size={14} />
                     </button>
                   </div>
@@ -1890,7 +2145,7 @@ function DecisionModelWorkspace({
                 <td className="p-2">
                   <div className="flex gap-2">
                     <input className="min-w-0 flex-1 rounded border border-line px-2 py-1 font-medium" value={option.name} onChange={(event) => onUpdate({ ...store, options: store.options.map((item) => item.id === option.id ? { ...item, name: event.target.value } : item) })} aria-label="Option name" />
-                    <button className="rounded border border-line p-1 text-rust" aria-label={`Delete option ${option.name}`} onClick={() => onDeleteOption(option)}>
+                    <button className="rounded border border-line p-1 text-rust" aria-label={`Delete option ${option.name}`} title={`Delete option ${option.name}`} onClick={() => onDeleteOption(option)}>
                       <Trash2 size={14} />
                     </button>
                   </div>
@@ -2187,22 +2442,28 @@ function SettingsWorkspace({
   store,
   openRouterKey,
   activeSection,
+  modelRefreshStatus,
+  modelRefreshError,
   onUpdate,
   onOpenRouterKey,
   onRefreshModels,
-  onOpenConfigModal
+  onOpenConfigModal,
+  onExportJson
 }: {
   store: StrategyStore;
   openRouterKey: string;
-  activeSection: "openrouter" | "types" | "statuses" | "sources";
+  activeSection: "openrouter" | "data" | "types" | "statuses" | "sources";
+  modelRefreshStatus: string;
+  modelRefreshError: string;
   onUpdate: (store: StrategyStore) => void;
   onOpenRouterKey: (value: string) => void;
   onRefreshModels: () => void;
   onOpenConfigModal: (kind: "type" | "status" | "source") => void;
+  onExportJson: () => void;
 }) {
   function deleteType(value: string) {
     if (store.config.projectTypes.length <= 1) return;
-    const nextTypes = store.config.projectTypes.filter((item) => item !== value);
+    const nextTypes = sortOptionsAlphabetically(store.config.projectTypes.filter((item) => item !== value));
     const replacement = nextTypes[0];
     onUpdate({
       ...store,
@@ -2215,7 +2476,7 @@ function SettingsWorkspace({
 
   function deleteStatus(value: string) {
     if (store.config.projectStatuses.length <= 1) return;
-    const nextStatuses = store.config.projectStatuses.filter((item) => item !== value);
+    const nextStatuses = sortOptionsAlphabetically(store.config.projectStatuses.filter((item) => item !== value));
     const replacement = nextStatuses[0];
     onUpdate({
       ...store,
@@ -2228,7 +2489,7 @@ function SettingsWorkspace({
 
   function deleteSource(value: string) {
     if (store.config.sourceTypes.length <= 1) return;
-    const nextSourceTypes = store.config.sourceTypes.filter((item) => item !== value);
+    const nextSourceTypes = sortOptionsAlphabetically(store.config.sourceTypes.filter((item) => item !== value), formatSourceType);
     const replacement = nextSourceTypes.includes("UserProvided") ? "UserProvided" : nextSourceTypes[0];
     onUpdate({
       ...store,
@@ -2243,12 +2504,12 @@ function SettingsWorkspace({
     <div>
       <h2 className="text-lg font-semibold">Settings and Configuration</h2>
       <div className="mt-4 grid gap-3">
-        <div className="copy-block rounded-md border border-line bg-paper p-4 text-sm">
-          GitHub Pages is public static hosting. OpenRouter keys are session-only, original documents are not retained, and extracted text can be purged after AI review.
-        </div>
         {activeSection === "openrouter" && (
           <div className="rounded-md border border-line p-4">
             <h3 className="font-semibold">OpenRouter</h3>
+            <div className="copy-block mt-3 rounded-md border border-gold bg-gold/10 p-3 text-sm">
+              OpenRouter API keys are stored only in this browser session. They are not committed to GitHub, included in JSON exports, or retained after the session ends.
+            </div>
             <div className="mt-3 grid gap-3 lg:grid-cols-2">
               <label className="grid gap-1 text-sm">
                 <span className="font-medium">Session API Key</span>
@@ -2267,7 +2528,17 @@ function SettingsWorkspace({
                 </select>
               </label>
             </div>
-            <button className="mt-3 rounded-md border border-line px-3 py-2 text-sm" onClick={onRefreshModels}>Retrieve available OpenRouter models</button>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <button className="rounded-md border border-line px-3 py-2 text-sm" onClick={onRefreshModels}>Retrieve available OpenRouter models</button>
+              {store.config.modelMetadataRetrievedAt && (
+                <span className="text-sm text-moss">Last retrieved: {formatLocalTimestamp(store.config.modelMetadataRetrievedAt)}</span>
+              )}
+            </div>
+            {(modelRefreshStatus || modelRefreshError) && (
+              <div className={`mt-3 rounded-md border p-3 text-sm ${modelRefreshError ? "border-rust bg-rust/5 text-rust" : "border-line bg-paper"}`}>
+                {modelRefreshError || modelRefreshStatus}
+              </div>
+            )}
             <label className="mt-3 grid gap-1 text-sm">
               <span className="font-medium">Custom OpenRouter Model</span>
               {store.config.modelMetadata.length > 0 ? (
@@ -2295,15 +2566,85 @@ function SettingsWorkspace({
             {store.config.modelMetadata.length > 0 && <p className="mt-2 text-sm text-moss">Loaded {store.config.modelMetadata.length} model records sorted alphabetically.</p>}
           </div>
         )}
+        {activeSection === "data" && (
+          <DataStorageSettings store={store} openRouterKeyPresent={Boolean(openRouterKey.trim())} onExportJson={onExportJson} />
+        )}
         {activeSection === "types" && (
-          <ConfigList title="Project Types" values={store.config.projectTypes} onAdd={() => onOpenConfigModal("type")} onDelete={deleteType} />
+          <ConfigList title="Project Types" values={sortOptionsAlphabetically(store.config.projectTypes)} onAdd={() => onOpenConfigModal("type")} onDelete={deleteType} />
         )}
         {activeSection === "statuses" && (
-          <ConfigList title="Project Statuses" values={store.config.projectStatuses} onAdd={() => onOpenConfigModal("status")} onDelete={deleteStatus} />
+          <ConfigList title="Project Statuses" values={sortOptionsAlphabetically(store.config.projectStatuses)} onAdd={() => onOpenConfigModal("status")} onDelete={deleteStatus} />
         )}
         {activeSection === "sources" && (
-          <ConfigList title="Source Categories" values={store.config.sourceTypes} formatValue={formatSourceType} onAdd={() => onOpenConfigModal("source")} onDelete={deleteSource} />
+          <ConfigList title="Source Categories" values={sortOptionsAlphabetically(store.config.sourceTypes, formatSourceType)} formatValue={formatSourceType} onAdd={() => onOpenConfigModal("source")} onDelete={deleteSource} />
         )}
+      </div>
+    </div>
+  );
+}
+
+function DataStorageSettings({
+  store,
+  openRouterKeyPresent,
+  onExportJson
+}: {
+  store: StrategyStore;
+  openRouterKeyPresent: boolean;
+  onExportJson: () => void;
+}) {
+  const retainedChunks = store.documentChunks.length;
+  const retainedDocuments = store.extractedDocuments.filter((item) => item.textRetained).length;
+  const pendingAi = store.aiCandidates.filter((item) => item.status === "Pending").length;
+
+  return (
+    <div className="rounded-md border border-line p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 className="font-semibold">Data & Backup</h3>
+          <p className="copy-block mt-1 text-sm text-moss">
+            Stratis runs as a static GitHub Pages app. Each visitor gets an independent browser-local workspace for this site origin. No project data is sent to GitHub, and no server account is created.
+          </p>
+        </div>
+        <button className="inline-flex items-center gap-2 rounded-md bg-ink px-3 py-2 text-sm font-medium text-white" onClick={onExportJson}>
+          <Download size={16} /> Export Workspace JSON
+        </button>
+      </div>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-3">
+        <Metric label="Projects" value={store.projects.length.toString()} />
+        <Metric label="Retained text chunks" value={retainedChunks.toString()} warning={retainedChunks > 0} />
+        <Metric label="Pending AI review" value={pendingAi.toString()} warning={pendingAi > 0} />
+      </div>
+
+      <div className="mt-4 grid gap-3 lg:grid-cols-2">
+        <div className="rounded-md border border-line bg-paper p-3 text-sm">
+          <h4 className="font-semibold">Stored on this browser</h4>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            <li>Projects, configuration, evidence, assumptions, options, scores, pre-mortems, decision logs, chart insights, and AI review candidates.</li>
+            <li>Extracted text chunks and source file references after document ingestion.</li>
+            <li>Data is saved with IndexedDB and mirrored through local browser storage for resilience.</li>
+          </ul>
+        </div>
+        <div className="rounded-md border border-line bg-paper p-3 text-sm">
+          <h4 className="font-semibold">Not stored in the repository</h4>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            <li>Original uploaded files are not retained by the app.</li>
+            <li>OpenRouter API keys are session-only and clear when the browser session ends.</li>
+            <li>Project data is not shared across devices unless the user exports and imports JSON.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div className="mt-4 rounded-md border border-gold bg-gold/10 p-3 text-sm">
+        <p className="font-semibold">Document retention and backup workflow</p>
+        <p className="mt-1">
+          Original uploaded documents are not retained. Extracted text chunks and structured outputs are stored locally for audit and can be purged after AI review. After meaningful edits or AI review, export the workspace JSON. Import that JSON later to continue work on another browser or device. If browser storage is cleared, private browsing is used, or the device changes, local state may not be available without a JSON backup.
+        </p>
+      </div>
+
+      <div className="mt-4 grid gap-2 text-sm text-moss">
+        <p>OpenRouter session key present: <strong>{openRouterKeyPresent ? "Yes" : "No"}</strong></p>
+        <p>Document records with retained text: <strong>{retainedDocuments}</strong></p>
       </div>
     </div>
   );
@@ -2332,7 +2673,7 @@ function ConfigList({
         {values.map((value) => (
           <span key={value} className="inline-flex items-center gap-2 rounded-md border border-line bg-paper px-3 py-2 text-sm">
             {formatValue(value)}
-            <button className="text-rust disabled:text-moss" disabled={values.length <= 1} aria-label={`Delete ${value}`} onClick={() => onDelete(value)}>
+            <button className="text-rust disabled:text-moss" disabled={values.length <= 1} aria-label={`Delete ${value}`} title={`Delete ${formatValue(value)}`} onClick={() => onDelete(value)}>
               <X size={14} />
             </button>
           </span>
@@ -2353,3 +2694,5 @@ function WorkspaceHeader({ title, action, onAction, secondaryAction, onSecondary
     </div>
   );
 }
+
+

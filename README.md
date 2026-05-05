@@ -19,6 +19,7 @@ A static, browser-based executive strategy workbench for turning evidence, assum
 - `docs/scoring-methodology.md` - option scoring and sensitivity methodology.
 - `docs/ai-workflow-design.md` - AI review, provenance, and OpenRouter workflow.
 - `docs/roadmap.md` - staged release plan.
+- `examples/asean-digital-wealth-market-entry.json` - importable sample workspace for the ASEAN Digital Wealth Market Entry demo, with no API keys or retained source documents.
 
 ## MVP Features
 

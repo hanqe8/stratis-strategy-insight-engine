@@ -3,6 +3,62 @@ import { formatSourceType } from "./config";
 import { calculateOptionTotals, getRecommendedOption } from "./scoring";
 import { findSensitivityDrivers } from "./sensitivity";
 
+function escapeTableCell(value: unknown): string {
+  return String(value ?? "")
+    .replace(/\|/g, "\\|")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function formatProvenance(value: string | undefined): string {
+  if (value === "AI") return "AI";
+  if (value === "AIEdited") return "AI Edited";
+  return "User";
+}
+
+function evidenceTableMarkdown(evidence: StrategyStore["evidence"]): string {
+  if (!evidence.length) return "- No evidence added yet.";
+  const rows = evidence.map((item, index) => {
+    const sourceParts = [
+      item.sourceTitle,
+      formatSourceType(item.sourceType),
+      item.sourceDate
+    ].filter(Boolean);
+    const source = item.sourceUrl
+      ? `${sourceParts.join(" · ")} (${item.sourceUrl})`
+      : sourceParts.join(" · ");
+    return `| ${index + 1} | ${escapeTableCell(item.claim)} | ${escapeTableCell(source)} | ${item.confidence} | ${item.relevance}/5 | ${formatProvenance(item.provenance)} |`;
+  });
+  return [
+    "| S/No. | Evidence | Source | Confidence | Relevance | Tagged Category |",
+    "| ---: | --- | --- | --- | --- | --- |",
+    ...rows
+  ].join("\n");
+}
+
+function assumptionTableMarkdown(assumptions: StrategyStore["assumptions"]): string {
+  if (!assumptions.length) return "- No high-impact assumptions recorded.";
+  const rows = assumptions.map((item, index) => `| ${index + 1} | ${escapeTableCell(item.statement)} |`);
+  return [
+    "| S/No. | Assumptions |",
+    "| ---: | --- |",
+    ...rows
+  ].join("\n");
+}
+
+function premortemTableMarkdown(premortems: StrategyStore["premortems"]): string {
+  if (!premortems.length) return "- No pre-mortem items added yet.";
+  const rows = premortems.map((item, index) => {
+    const details = `${item.failureCause} Mitigation: ${item.mitigation || "Not defined."}`;
+    return `| ${index + 1} | ${escapeTableCell(details)} | ${item.likelihood}/5 | ${item.severity}/5 | ${item.likelihood * item.severity} | ${escapeTableCell(item.earlyWarning || "Not defined.")} |`;
+  });
+  return [
+    "| S/No. | Details | Likelihood | Severity | Risk Score | How to Validate |",
+    "| ---: | --- | --- | --- | --- | --- |",
+    ...rows
+  ].join("\n");
+}
+
 export function generateMarkdownBrief(store: StrategyStore, projectId: string): string {
   const project = store.projects.find((item) => item.id === projectId);
   if (!project) return "# Brief unavailable\n\nProject not found.";
@@ -28,10 +84,6 @@ export function generateMarkdownBrief(store: StrategyStore, projectId: string): 
     (item) => item.impact === "High" && item.confidence === "Low"
   );
   const sensitivityDrivers = findSensitivityDrivers(options, criteria, scores);
-  const latestLog = store.decisionLog
-    .filter((item) => item.projectId === projectId)
-    .sort((a, b) => b.timestamp.localeCompare(a.timestamp))[0];
-
   return `# ${project.title}
 
 ## Decision and recommendation
@@ -48,13 +100,13 @@ ${recommendation ? `${recommendation.optionName} ranks first in the current weig
 ${totals.map((item) => `- #${item.rank} ${item.optionName}: ${item.total.toFixed(2)}/5 weighted score`).join("\n") || "- No scoring model available."}
 
 ## Key assumptions
-${highImpactAssumptions.map((item) => `- ${item.statement} Confidence: ${item.confidence}. Validation: ${item.validationTest}`).join("\n") || "- No high-impact assumptions recorded."}
+${assumptionTableMarkdown(highImpactAssumptions)}
 
 ## Sensitivity
 ${sensitivityDrivers.length ? `Top sensitivity drivers: ${sensitivityDrivers.join(", ")}.` : "No recommendation-flipping driver identified in the +/-20 point criterion test."}
 
 ## Pre-mortem
-${premortems.map((item) => `- ${item.failureCause} Risk score: ${item.likelihood * item.severity}. Mitigation: ${item.mitigation}. Early warning: ${item.earlyWarning}.`).join("\n") || "- No pre-mortem items added yet."}
+${premortemTableMarkdown(premortems)}
 
 ## Watch-outs
 ${weakAssumptions.map((item) => `- High-impact low-confidence assumption: ${item.statement}`).join("\n") || "- No high-impact low-confidence assumptions flagged."}
@@ -64,11 +116,8 @@ ${weakAssumptions.map((item) => `- High-impact low-confidence assumption: ${item
 - Review scoring rationales for the highest-weight criteria.
 - Refresh evidence dates before publishing the recommendation.
 
-## Decision log
-${latestLog ? `Latest change: ${latestLog.decisionChange}. Reason: ${latestLog.reason}.` : "No decision log events recorded."}
-
 ## Evidence base
-${evidence.map((item, index) => `${index + 1}. ${item.claim} [${item.sourceTitle}${item.sourceUrl ? `](${item.sourceUrl})` : "]"}; confidence: ${item.confidence}; relevance: ${item.relevance}/5.`).join("\n") || "- No evidence added yet."}
+${evidenceTableMarkdown(evidence)}
 `;
 }
 
@@ -92,11 +141,6 @@ export function generateDetailedBrief(store: StrategyStore, projectId: string): 
   const acceptedAiNotes = store.aiCandidates.filter(
     (item) => item.projectId === projectId && item.status === "Accepted" && item.kind === "BriefNote"
   );
-  const latestLogs = store.decisionLog
-    .filter((item) => item.projectId === projectId)
-    .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
-    .slice(0, 5);
-
   return `# ${project.title} - Detailed Decision Rationale
 
 ## 1. Decision Context
@@ -113,19 +157,10 @@ Ranking:
 ${totals.map((item) => `- #${item.rank}: ${item.optionName} at ${item.total.toFixed(2)}/5; missing scores: ${item.missingScores}`).join("\n") || "- No options scored."}
 
 ## 3. Evidence Trail
-${evidence.map((item, index) => `${index + 1}. Claim: ${item.claim}
-   Source: ${item.sourceTitle}${item.sourceUrl ? ` (${item.sourceUrl})` : ""}
-   Type/date: ${formatSourceType(item.sourceType)}${item.sourceDate ? `, ${item.sourceDate}` : ""}
-   Confidence/relevance: ${item.confidence}, ${item.relevance}/5
-   Decision implication: ${item.implication}
-   Notes: ${item.notes || "None"}`).join("\n\n") || "- No evidence entered."}
+${evidenceTableMarkdown(evidence)}
 
 ## 4. Assumption and Uncertainty Ledger
-${assumptions.map((item) => `- ${item.statement}
-  Impact/confidence: ${item.impact}/${item.confidence}
-  Validation test: ${item.validationTest || "Not defined."}
-  Invalidation trigger: ${item.invalidationTrigger || "Not defined."}
-  Linked evidence IDs: ${item.linkedEvidenceIds.join(", ") || "None"}`).join("\n") || "- No assumptions entered."}
+${assumptionTableMarkdown(assumptions)}
 
 ## 5. Scoring Method
 Criteria:
@@ -144,11 +179,7 @@ ${findSensitivityDrivers(options, criteria, scores).length
     : "No recommendation-changing driver found in the default +/-20 point test."}
 
 ## 7. Risk Pre-mortem
-${premortems.map((item) => `- ${item.failureCause}
-  Risk score: ${item.likelihood * item.severity}
-  Mitigation: ${item.mitigation}
-  Early warning: ${item.earlyWarning}
-  Owner: ${item.owner || "Unassigned"}`).join("\n") || "- No pre-mortem items entered."}
+${premortemTableMarkdown(premortems)}
 
 ## 8. Financial and Market Signals
 ${chartInsights.map((item) => `- ${item.title}: ${item.summary}`).join("\n") || "- No chart insights saved."}
@@ -159,10 +190,7 @@ ${acceptedAiNotes.map((item) => {
   return `- ${payload.title || "Brief note"}: ${payload.body || item.rationale}`;
 }).join("\n") || "- No accepted AI brief notes."}
 
-## 10. Decision Change History
-${latestLogs.map((item) => `- ${new Date(item.timestamp).toLocaleString()}: ${item.decisionChange}. Reason: ${item.reason}`).join("\n") || "- No decision log entries."}
-
-## 11. Audit Gaps
+## 10. Audit Gaps
 - Refresh source dates before publication.
 - Check whether high-impact low-confidence assumptions have validation tests.
 - Confirm all high-weight score rationales are backed by evidence.

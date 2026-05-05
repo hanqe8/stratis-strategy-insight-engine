@@ -15,7 +15,8 @@ export const sampleStore: StrategyStore = {
       siteUrl: "http://127.0.0.1:5173",
       appTitle: "Stratis - Strategy & Insight Engine"
     },
-    modelMetadata: []
+    modelMetadata: [],
+    modelMetadataRetrievedAt: undefined
   },
   projects: [
     {

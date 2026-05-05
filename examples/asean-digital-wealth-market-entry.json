@@ -1,0 +1,274 @@
+{
+  "config": {
+    "projectTypes": [
+      "Market Entry",
+      "Product Strategy",
+      "Financial Analysis",
+      "Macro Briefing",
+      "Platform Strategy",
+      "Transformation"
+    ],
+    "projectStatuses": [
+      "Draft",
+      "In Review",
+      "Recommended",
+      "Archived"
+    ],
+    "sourceTypes": [
+      "Official",
+      "Filing",
+      "Regulator",
+      "Company",
+      "News",
+      "Analyst",
+      "InternalNote",
+      "UserProvided"
+    ],
+    "openRouterPresets": [],
+    "aiSettings": {
+      "selectedModel": "anthropic/claude-sonnet-4.6",
+      "customModelId": "",
+      "siteUrl": "https://hanqe8.github.io/stratis-strategy-insight-engine/",
+      "appTitle": "Stratis - Strategy & Insight Engine"
+    },
+    "modelMetadata": []
+  },
+  "projects": [
+    {
+      "id": "proj-asean-wealth",
+      "title": "ASEAN Digital Wealth Market Entry",
+      "type": "Market Entry",
+      "decisionQuestion": "Which ASEAN entry route should a digital wealth platform prioritize over the next 18 months?",
+      "timeHorizon": "18 months",
+      "owner": "Strategy Lead",
+      "status": "Recommended",
+      "createdAt": "2026-05-04T09:00:00.000Z",
+      "updatedAt": "2026-05-04T09:00:00.000Z"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "ev-asean-1",
+      "projectId": "proj-asean-wealth",
+      "sourceTitle": "Synthetic regulator readiness scan",
+      "sourceType": "Regulator",
+      "sourceDate": "2026-04-10",
+      "claim": "Digital advisory permissions vary materially across target ASEAN markets.",
+      "implication": "A partnership-led route reduces licensing delay while preserving optionality.",
+      "confidence": "Medium",
+      "relevance": 5,
+      "notes": "Synthetic public-domain-style sample.",
+      "provenance": "User"
+    },
+    {
+      "id": "ev-asean-2",
+      "projectId": "proj-asean-wealth",
+      "sourceTitle": "Mock channel economics benchmark",
+      "sourceType": "Analyst",
+      "sourceDate": "2026-03-18",
+      "claim": "Bank-affinity channels show lower CAC but slower product iteration cycles.",
+      "implication": "Distribution leverage must be weighed against control of roadmap velocity.",
+      "confidence": "Medium",
+      "relevance": 4,
+      "provenance": "User"
+    }
+  ],
+  "assumptions": [
+    {
+      "id": "as-asean-1",
+      "projectId": "proj-asean-wealth",
+      "statement": "A regional bank partner can support compliant onboarding within two quarters.",
+      "impact": "High",
+      "confidence": "Medium",
+      "validationTest": "Obtain partner compliance and integration commitment before pilot funding.",
+      "invalidationTrigger": "Partner legal review requires market-by-market custom licensing.",
+      "linkedEvidenceIds": [
+        "ev-asean-1",
+        "ev-asean-2"
+      ],
+      "provenance": "User"
+    }
+  ],
+  "options": [
+    {
+      "id": "op-asean-partner",
+      "projectId": "proj-asean-wealth",
+      "name": "Partner-led entry",
+      "description": "Launch through bank or broker distribution with staged product control.",
+      "provenance": "User"
+    },
+    {
+      "id": "op-asean-direct",
+      "projectId": "proj-asean-wealth",
+      "name": "Direct license entry",
+      "description": "Pursue own licensing and build direct acquisition channels.",
+      "provenance": "User"
+    },
+    {
+      "id": "op-asean-wait",
+      "projectId": "proj-asean-wealth",
+      "name": "Wait and monitor",
+      "description": "Delay entry until regulatory and customer acquisition economics improve.",
+      "provenance": "User"
+    }
+  ],
+  "criteria": [
+    {
+      "id": "cr-asean-market",
+      "projectId": "proj-asean-wealth",
+      "name": "Market attractiveness",
+      "weight": 35,
+      "provenance": "User"
+    },
+    {
+      "id": "cr-asean-speed",
+      "projectId": "proj-asean-wealth",
+      "name": "Speed to learn",
+      "weight": 25,
+      "provenance": "User"
+    },
+    {
+      "id": "cr-asean-risk",
+      "projectId": "proj-asean-wealth",
+      "name": "Execution risk",
+      "weight": 20,
+      "provenance": "User"
+    },
+    {
+      "id": "cr-asean-control",
+      "projectId": "proj-asean-wealth",
+      "name": "Strategic control",
+      "weight": 20,
+      "provenance": "User"
+    }
+  ],
+  "scores": [
+    {
+      "id": "sc-1",
+      "optionId": "op-asean-partner",
+      "criterionId": "cr-asean-market",
+      "score": 4,
+      "rationale": "Good segment access via partner base.",
+      "provenance": "User"
+    },
+    {
+      "id": "sc-2",
+      "optionId": "op-asean-partner",
+      "criterionId": "cr-asean-speed",
+      "score": 5,
+      "rationale": "Fastest route to real customer learning.",
+      "provenance": "User"
+    },
+    {
+      "id": "sc-3",
+      "optionId": "op-asean-partner",
+      "criterionId": "cr-asean-risk",
+      "score": 4,
+      "rationale": "Compliance and acquisition risks shared.",
+      "provenance": "User"
+    },
+    {
+      "id": "sc-4",
+      "optionId": "op-asean-partner",
+      "criterionId": "cr-asean-control",
+      "score": 3,
+      "rationale": "Roadmap control diluted.",
+      "provenance": "User"
+    },
+    {
+      "id": "sc-5",
+      "optionId": "op-asean-direct",
+      "criterionId": "cr-asean-market",
+      "score": 4,
+      "rationale": "Large upside if licensing clears.",
+      "provenance": "User"
+    },
+    {
+      "id": "sc-6",
+      "optionId": "op-asean-direct",
+      "criterionId": "cr-asean-speed",
+      "score": 2,
+      "rationale": "Licensing path slows proof points.",
+      "provenance": "User"
+    },
+    {
+      "id": "sc-7",
+      "optionId": "op-asean-direct",
+      "criterionId": "cr-asean-risk",
+      "score": 2,
+      "rationale": "Higher regulatory and CAC risk.",
+      "provenance": "User"
+    },
+    {
+      "id": "sc-8",
+      "optionId": "op-asean-direct",
+      "criterionId": "cr-asean-control",
+      "score": 5,
+      "rationale": "Highest product and data control.",
+      "provenance": "User"
+    },
+    {
+      "id": "sc-9",
+      "optionId": "op-asean-wait",
+      "criterionId": "cr-asean-market",
+      "score": 2,
+      "rationale": "No near-term capture.",
+      "provenance": "User"
+    },
+    {
+      "id": "sc-10",
+      "optionId": "op-asean-wait",
+      "criterionId": "cr-asean-speed",
+      "score": 1,
+      "rationale": "Learning delayed.",
+      "provenance": "User"
+    },
+    {
+      "id": "sc-11",
+      "optionId": "op-asean-wait",
+      "criterionId": "cr-asean-risk",
+      "score": 5,
+      "rationale": "Avoids immediate execution risk.",
+      "provenance": "User"
+    },
+    {
+      "id": "sc-12",
+      "optionId": "op-asean-wait",
+      "criterionId": "cr-asean-control",
+      "score": 3,
+      "rationale": "Preserves capital but loses option value.",
+      "provenance": "User"
+    }
+  ],
+  "premortems": [
+    {
+      "id": "pm-asean-1",
+      "projectId": "proj-asean-wealth",
+      "failureCause": "Partner integration slows launch past target window.",
+      "likelihood": 3,
+      "severity": 4,
+      "mitigation": "Set integration exit criteria and parallel diligence on backup partners.",
+      "earlyWarning": "API and compliance milestones slip by more than four weeks.",
+      "owner": "Partnerships",
+      "provenance": "User"
+    }
+  ],
+  "decisionLog": [
+    {
+      "id": "dl-asean-1",
+      "projectId": "proj-asean-wealth",
+      "timestamp": "2026-05-04T09:00:00.000Z",
+      "decisionChange": "Moved recommendation from direct entry to partner-led entry.",
+      "reason": "Sensitivity showed speed to learn and execution risk outweighed strategic control.",
+      "evidenceAdded": "ev-asean-2",
+      "assumptionChanged": "as-asean-1",
+      "recommendationBefore": "Direct license entry",
+      "recommendationAfter": "Partner-led entry",
+      "provenance": "User"
+    }
+  ],
+  "chartInsights": [],
+  "extractedDocuments": [],
+  "documentChunks": [],
+  "aiCandidates": []
+}
