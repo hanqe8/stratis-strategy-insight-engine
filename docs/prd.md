@@ -732,29 +732,29 @@ Future versions should add tests for:
 
 ### v0.3 — AI Workflow Hardening
 
-- Better AI extraction prompts
-- Source quality scoring
-- Evidence relevance suggestions
-- Web-search staging
-- Candidate edit/reversion logic
-- AI evaluation checklist
+- [ ] Better AI extraction prompts
+- [ ] Source quality scoring
+- [ ] Evidence relevance suggestions
+- [ ] Web-search staging
+- [ ] Candidate edit/reversion logic
+- [ ] AI evaluation checklist
 
 ### v0.4 — Financial and Market Analysis
 
-- Richer CSV charting
-- Financial and operating metric templates
-- Scenario modelling
-- Chart insights as evidence
-- More robust sample projects
+- [ ] Richer CSV charting
+- [ ] Financial and operating metric templates
+- [ ] Scenario modelling
+- [ ] Chart insights as evidence
+- [ ] More robust sample projects
 
 ### v0.5 — Executive Output and Portfolio Polish
 
-- Improved print view
-- Executive deck export concept
-- Better README screenshots
-- Demo GIF
-- More complete test corpus
-- Stronger GitHub Pages product demo
+- [ ] Improved print view
+- [ ] Executive deck export concept
+- [ ] Better README screenshots
+- [ ] Demo GIF
+- [ ] More complete test corpus
+- [ ] Stronger GitHub Pages product demo
 
 ---
 
