@@ -1,82 +1,192 @@
-# Stratis - Strategy & Insight Engine
+# Stratis — Strategy & Insight Engine
 
-A static, browser-based executive strategy workbench for turning evidence, assumptions, weighted options, financial inputs, and risks into decision-ready briefings with citations and auditable scoring logic.
+A browser-based executive strategy workbench for converting evidence, assumptions, strategic options, financial inputs, and risks into decision-ready briefs with auditable scoring logic.
 
-## What It Demonstrates
+Stratis is designed for strategy, product, platform, and market analysis workflows where the recommendation matters — but the reasoning trail matters just as much.
 
-- Structured strategy workflow: Evidence -> Assumptions -> Options -> Scores -> Sensitivity -> Pre-mortem -> Brief -> Decision Log.
-- Productised decision support rather than a generic summariser.
-- Static-site architecture suitable for GitHub Pages.
-- Local browser persistence, JSON backup, Markdown export, and no required backend.
-- TypeScript business logic with unit tests for scoring and sensitivity.
+<p align="center">
+  <img src="docs/assets/readme/stratis_readme_hero_collage.png" alt="Stratis Strategy and Insight Engine overview" width="100%">
+</p>
 
-## Product Documentation
+---
 
-- `docs/prd.md` - product requirements document.
-- `docs/product-brief.md` - product thesis and positioning.
-- `docs/architecture.md` - static app architecture and module boundaries.
-- `docs/evidence-standard.md` - evidence quality and citation standard.
-- `docs/scoring-methodology.md` - option scoring and sensitivity methodology.
-- `docs/ai-workflow-design.md` - AI review, provenance, and OpenRouter workflow.
-- `docs/roadmap.md` - staged release plan.
-- `examples/asean-digital-wealth-market-entry.json` - importable sample workspace for the ASEAN Digital Wealth Market Entry demo, with no API keys or retained source documents.
+## Product thesis
 
-## MVP Features
+Strategic recommendations often get built across scattered notes, spreadsheets, PDFs, decks, and ad hoc AI prompts. The result is a familiar problem: the final answer may sound polished, but the evidence, assumptions, scoring logic, and sensitivity analysis are difficult to audit.
 
-- Create, edit, duplicate, and delete projects.
-- Evidence workspace with source type, claim, implication, confidence, relevance, and citation-ready fields.
-- Assumption ledger with impact, confidence, validation, invalidation, and linked evidence.
-- Weighted option scoring matrix with automatic ranking.
-- Sensitivity checker for criterion weight changes.
-- Pre-mortem builder sorted by likelihood x severity.
-- CSV upload, responsive charts, summary statistics, and chart insight capture.
-- Browser-side document ingestion for text-extractable PDF, DOCX, CSV, TXT, MD, and JSON files.
-- OpenRouter-backed AI extraction with a session-only user API key and staged review queue.
-- Optional OpenRouter web search during analysis, with online-source findings staged for review.
-- Configurable project Type and Status dropdown values with duplicate detection.
-- Deterministic executive brief generator with Markdown export.
-- Brief Preview toggle for executive-ready or detailed rationale views.
-- LocalStorage persistence, project JSON import/export, print-friendly brief view.
-- Three synthetic sample projects:
-  - ASEAN Digital Wealth Market Entry
-  - Healthcare Workflow AI Command Centre
-  - Semiconductor Macro Brief
+Stratis treats strategy work as a structured decision workflow:
 
-## Tech Stack
+> Evidence → Assumptions → Options → Scores → Sensitivity → Pre-mortem → Brief → Decision Log
 
-- React + Vite + TypeScript
-- Tailwind CSS
-- Recharts
-- Papa Parse
-- Dexie / IndexedDB
-- pdfjs-dist and Mammoth for client-side text extraction
-- Vitest
-- GitHub Actions for GitHub Pages
+The goal is not to be another generic AI summariser. The goal is to make strategic reasoning reviewable, source-aware, and decision-useful.
 
-## Local Development
+---
 
-```bash
-npm install
-npm run dev
+## What this demonstrates
+
+Stratis is a portfolio-grade product build that demonstrates:
+
+- Productised decision support rather than generic summarisation.
+- Evidence management and source-quality discipline.
+- Assumption tracking and uncertainty calibration.
+- Weighted option scoring with visible rationale.
+- Sensitivity analysis and pre-mortem thinking.
+- Browser-side document ingestion and staged AI review.
+- Executive brief generation with an auditable reasoning trail.
+- Static-site deployment suitable for GitHub Pages.
+
+---
+
+## Core use cases
+
+| Use case | Example question |
+|---|---|
+| Market entry | Which ASEAN country and entry route should a digital wealth platform prioritise? |
+| Product strategy | Which product feature should be prioritised given impact, risk, and feasibility? |
+| Platform strategy | Which architecture option best balances reuse, control, cost, and compliance? |
+| Financial analysis | Which scenario changes the recommendation under different margin or growth assumptions? |
+| Macro briefing | Which market signals materially affect executive attention this week? |
+
+---
+
+## Key features
+
+### 1. Project workspace
+
+Create and manage structured strategy projects with a decision question, horizon, owner, type, and status.
+
+### 2. Bulk document ingestion
+
+Upload text-extractable PDF, DOCX, CSV, TXT, MD, or JSON files. Extracted chunks can be retained for review and used as evidence inputs.
+
+Current limitations:
+
+- No OCR for scanned PDFs.
+- No reliable reconstruction of complex PDF tables.
+- No password-protected document support.
+- Original files are not retained; extracted text chunks are staged for review.
+
+### 3. Evidence workspace
+
+Capture citation-ready evidence with source type, claim, implication, confidence, relevance, and notes.
+
+### 4. Assumption ledger
+
+Track high-impact assumptions, confidence levels, validation tests, invalidation triggers, and linked evidence.
+
+### 5. Decision model
+
+Compare strategic options using weighted criteria, option scores, and score rationales. Weighted totals are recalculated automatically.
+
+### 6. Sensitivity analysis
+
+Test how changes in weights or assumptions could alter the top-ranked recommendation.
+
+### 7. Pre-mortem builder
+
+Identify plausible failure causes, mitigations, early warning indicators, and risk owners.
+
+### 8. AI review queue
+
+Use optional AI extraction to analyse uploaded documents. Findings are staged for review before they can affect evidence, assumptions, or briefs.
+
+### 9. Executive brief generator
+
+Generate executive-ready or detailed rationale views from the current project state, including recommendation logic, option scoring, assumptions, risks, and evidence references.
+
+### 10. Local persistence and export
+
+Save work locally in the browser, export/import project JSON, and export executive briefs in Markdown.
+
+---
+
+## Application screenshots
+
+### Project and document ingestion
+
+<img src="docs/assets/readme/stratis_readme_01_project_ingestion.png" alt="Stratis project and document ingestion interface" width="100%">
+
+### Project setup and decision workflow
+
+<img src="docs/assets/readme/stratis_readme_02_project_setup_workflow.png" alt="Stratis project setup and decision workflow interface" width="100%">
+
+### Executive brief preview
+
+<img src="docs/assets/readme/stratis_readme_03_executive_brief.png" alt="Stratis executive brief preview" width="100%">
+
+<details>
+  <summary>View full scrollable application screenshot</summary>
+
+  <img src="docs/assets/readme/full-application-scroll.png" alt="Full Stratis application screenshot" width="100%">
+
+</details>
+
+---
+
+## Product documentation
+
+| Document | Purpose |
+|---|---|
+| [`docs/prd.md`](docs/prd.md) | Product requirements document |
+| [`docs/product-brief.md`](docs/product-brief.md) | Product thesis and positioning |
+| [`docs/architecture.md`](docs/architecture.md) | Static app architecture and module boundaries |
+| [`docs/evidence-standard.md`](docs/evidence-standard.md) | Evidence quality and citation standard |
+| [`docs/scoring-methodology.md`](docs/scoring-methodology.md) | Option scoring and sensitivity methodology |
+| [`docs/ai-workflow-design.md`](docs/ai-workflow-design.md) | AI review, provenance, and OpenRouter workflow |
+| [`docs/roadmap.md`](docs/roadmap.md) | Staged release plan |
+
+---
+
+## Sample projects
+
+The repository includes synthetic sample projects for demonstration and testing:
+
+1. **ASEAN Digital Wealth Market Entry**  
+   Market-entry strategy, country ranking, entry-route scoring, and executive recommendation.
+
+2. **Healthcare Workflow AI Command Centre**  
+   Regulated workflow operations, evidence review, AI-assisted triage, and decision support.
+
+3. **Semiconductor Macro Brief**  
+   Macro briefing workflow with market signals, evidence, assumptions, and executive synthesis.
+
+All sample content is synthetic or public-reference-style demonstration data. Do not use confidential or proprietary documents in the public deployment.
+
+---
+
+## Tech stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | React, Vite, TypeScript |
+| Styling | Tailwind CSS |
+| Charts | Recharts |
+| Document ingestion | pdfjs-dist, Mammoth, Papa Parse |
+| Local persistence | LocalStorage / browser-side storage |
+| AI workflow | OpenRouter-compatible, session-only user API key |
+| Testing | Vitest |
+| Deployment | GitHub Pages / GitHub Actions |
+
+---
+
+## Architecture
+
+Stratis is designed as a static, browser-first application.
+
+```text
+User uploads documents
+        ↓
+Browser-side text extraction
+        ↓
+Retained text chunks
+        ↓
+AI review queue or manual evidence entry
+        ↓
+Evidence and assumption workspace
+        ↓
+Option scoring and sensitivity analysis
+        ↓
+Pre-mortem and decision log
+        ↓
+Executive brief export
 ```
-
-## Quality Checks
-
-```bash
-npm run test
-npm run build
-```
-
-## Deployment
-
-The repository includes `.github/workflows/deploy.yml`, which builds the Vite app and publishes the `dist` artifact to GitHub Pages. In repository settings, set Pages source to GitHub Actions.
-
-Vite automatically uses `/<repo-name>/` as the base path when `GITHUB_REPOSITORY` is present in CI.
-
-## Privacy And Safety
-
-This is a static GitHub Pages app. Do not commit confidential data, customer documents, real API keys, or proprietary analysis.
-
-OpenRouter API keys are stored in `sessionStorage` only. Original uploaded files are not retained by default; the app stores extracted text chunks, source filenames, and structured AI outputs so users can audit citations. Users can purge extracted text after generating and reviewing evidence.
-
-v1 document limitations: no OCR, no scanned/image-only PDFs, no password-protected files, and no guaranteed PDF table reconstruction.
