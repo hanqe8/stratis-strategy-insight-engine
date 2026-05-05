@@ -5,7 +5,9 @@ A browser-based executive strategy workbench for converting evidence, assumption
 Stratis is designed for strategy, product, platform, and market analysis workflows where the recommendation matters — but the reasoning trail matters just as much.
 
 <p align="center">
-  <img src="docs/assets/readme/stratis_readme_hero_collage.png" alt="Stratis Strategy and Insight Engine overview" width="100%">
+  <img src="docs/assets/readme/stratis_readme_hero_collage.png"
+       alt="Stratis product overview"
+       width="100%">
 </p>
 
 ---
@@ -101,6 +103,31 @@ Save work locally in the browser, export/import project JSON, and export executi
 ---
 
 ## Application screenshots
+<table>
+  <tr>
+    <td width="33%" align="center">
+      <img src="docs/assets/readme/stratis_readme_01_project_ingestion.png"
+           alt="Project and document ingestion"
+           width="100%">
+      <br>
+      <sub><strong>Project & Document Ingestion</strong></sub>
+    </td>
+    <td width="33%" align="center">
+      <img src="docs/assets/readme/stratis_readme_02_project_setup_workflow.png"
+           alt="Project setup and decision workflow"
+           width="100%">
+      <br>
+      <sub><strong>Decision Workflow</strong></sub>
+    </td>
+    <td width="33%" align="center">
+      <img src="docs/assets/readme/stratis_readme_03_executive_brief.png"
+           alt="Executive brief preview"
+           width="100%">
+      <br>
+      <sub><strong>Executive Brief Preview</strong></sub>
+    </td>
+  </tr>
+</table>
 
 ### Project and Document Ingestion
 
