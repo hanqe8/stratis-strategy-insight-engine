@@ -102,6 +102,82 @@ Save work locally in the browser, export/import project JSON, and export executi
 
 ---
 
+## Getting Started
+
+Stratis is a static, browser-based strategy workbench built with React, Vite, TypeScript, and Tailwind CSS. It can be run locally for development and deployed as a static site through GitHub Pages.
+
+### Prerequisites
+
+Before running the project locally, ensure you have:
+
+- Node.js 18 or later
+- npm
+- Git
+
+```bash
+node --version
+npm --version
+git --version
+```
+
+Clone the repository and move into the project directory:
+
+```bash
+git clone https://github.com/hanqe8/stratis-strategy-insight-engine.git
+cd stratis-strategy-insight-engine
+```
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Run the development server:
+
+```bash
+npm run dev
+```
+
+After the development server starts, open the local URL shown in your terminal. Vite commonly serves the app at:
+http://localhost:5173
+
+
+Build the application for production:
+
+```bash
+npm run build
+```
+
+Preview the production build locally:
+
+```bash
+npm run preview
+```
+
+Run the test suite:
+
+```bash
+npm test
+```
+
+If your local setup uses a different test command, refer to the scripts defined in `package.json`.
+
+## Recommended First Walkthrough
+
+1. Open one of the sample projects
+2. Review the decision question and project context
+3. Inspect the evidence workspace
+4. Review assumptions and confidence levels
+5. Open the option scoring matrix
+6. Adjust criteria weights or scores
+7. Run a sensitivity check
+8. Review the pre-mortem
+9. Generate an executive brief
+10. Export the brief as Markdown or export the project as JSON
+
+---
+
 ## Application screenshots
 
 <table>
