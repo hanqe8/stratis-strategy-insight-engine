@@ -102,15 +102,15 @@ Save work locally in the browser, export/import project JSON, and export executi
 
 ## Application screenshots
 
-### Project and document ingestion
+### Project and Document Ingestion
 
 <img src="docs/assets/readme/stratis_readme_01_project_ingestion.png" alt="Stratis project and document ingestion interface" width="100%">
 
-### Project setup and decision workflow
+### Project Setup and Decision Workflow
 
 <img src="docs/assets/readme/stratis_readme_02_project_setup_workflow.png" alt="Stratis project setup and decision workflow interface" width="100%">
 
-### Executive brief preview
+### Executive Brief Preview
 
 <img src="docs/assets/readme/stratis_readme_03_executive_brief.png" alt="Stratis executive brief preview" width="100%">
 
