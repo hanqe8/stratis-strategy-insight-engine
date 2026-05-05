@@ -26,6 +26,8 @@ export interface Assumption {
   statement: string;
   impact: Impact;
   confidence: Confidence;
+  impactRationale?: string;
+  confidenceRationale?: string;
   validationTest: string;
   invalidationTrigger: string;
   linkedEvidenceIds: string[];

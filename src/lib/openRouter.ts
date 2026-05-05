@@ -18,12 +18,12 @@ export interface OpenRouterExtractionRequest {
   }[];
 }
 
-interface ExtractionResponse {
+export interface ExtractionResponse {
   candidates?: Omit<AiCandidate, "id" | "projectId" | "status" | "createdAt">[];
 }
 
 const extractionSchema = `
-Return strict JSON only:
+Return strict JSON only. Do not wrap in Markdown. Do not include comments or trailing commas. Return at most 20 total candidates:
 {
   "candidates": [
     {
@@ -44,23 +44,120 @@ For Evidence payload use: sourceTitle, sourceUrl, sourceType, sourceDate, claim,
 Set Evidence relevance as an integer 1-5 based on decision usefulness for the project decision question, where 5 directly affects the recommendation and 1 is peripheral context. Explain the relevance judgment in notes.
 Use sourceType from these canonical categories when possible: Official, Filing, Regulator, Company, News, Analyst, InternalNote, UserProvided. If none fits, include suggestedSourceType and explain why.
 Use ISO sourceDate as YYYY-MM-DD when available. If only year or month is available, return the best identified date and explain date uncertainty in notes.
-For Assumption payload use: statement, impact, confidence, validationTest, invalidationTrigger, linkedEvidenceIds.
+For Assumption payload use: statement, impact, impactRationale, confidence, confidenceRationale, validationTest, invalidationTrigger, linkedEvidenceIds. The impact and confidence fields must be exactly one of Low, Medium, High. Put explanations only in impactRationale or confidenceRationale.
 For Option payload use: name, description.
 For Criterion payload use: name, weight.
 For Score payload use: optionId if known, criterionId if known, score, rationale.
-For Premortem payload use: failureCause, likelihood, severity, mitigation, earlyWarning, owner.
+For Premortem payload use: failureCause, likelihood, severity, mitigation, earlyWarning, owner. Likelihood and severity must be integers from 1 to 5 only, where 1 is very low, 3 is moderate, and 5 is very high.
 For DecisionLog payload use: decisionChange, reason, recommendationBefore, recommendationAfter.
 For BriefNote payload use: title, body.
 All claims must be grounded in supplied chunks. Do not invent facts.`;
 
-function extractJson(text: string): ExtractionResponse {
+function stripJsonFences(text: string): string {
   const trimmed = text.trim();
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1];
-  const candidate = fenced ?? trimmed;
+  return fenced ?? trimmed;
+}
+
+function stripTrailingCommas(text: string): string {
+  return text.replace(/,\s*([}\]])/g, "$1");
+}
+
+function normalizeJsonText(text: string): string {
+  return stripTrailingCommas(text.replace(/^\uFEFF/, "").trim());
+}
+
+function getJsonEnvelope(text: string): string | undefined {
+  const candidate = stripJsonFences(text);
   const start = candidate.indexOf("{");
   const end = candidate.lastIndexOf("}");
-  if (start === -1 || end === -1) return {};
-  return JSON.parse(candidate.slice(start, end + 1)) as ExtractionResponse;
+  if (start === -1) return undefined;
+  return normalizeJsonText(candidate.slice(start, end === -1 ? undefined : end + 1));
+}
+
+function parseCandidateObjects(text: string): ExtractionResponse {
+  const source = stripJsonFences(text);
+  const candidatesKey = source.search(/"candidates"\s*:/);
+  if (candidatesKey === -1) return {};
+  const arrayStart = source.indexOf("[", candidatesKey);
+  if (arrayStart === -1) return {};
+
+  const candidates: ExtractionResponse["candidates"] = [];
+  let depth = 0;
+  let objectStart = -1;
+  let inString = false;
+  let escaped = false;
+
+  for (let index = arrayStart + 1; index < source.length; index += 1) {
+    const char = source[index];
+
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (char === "\\") {
+        escaped = true;
+      } else if (char === "\"") {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (char === "\"") {
+      inString = true;
+      continue;
+    }
+
+    if (char === "{") {
+      if (depth === 0) objectStart = index;
+      depth += 1;
+      continue;
+    }
+
+    if (char === "}") {
+      depth -= 1;
+      if (depth === 0 && objectStart >= 0) {
+        const objectText = normalizeJsonText(source.slice(objectStart, index + 1));
+        try {
+          candidates.push(JSON.parse(objectText) as NonNullable<ExtractionResponse["candidates"]>[number]);
+        } catch {
+          // Keep scanning; a later object may still be valid.
+        }
+        objectStart = -1;
+      }
+    }
+  }
+
+  return candidates.length ? { candidates } : {};
+}
+
+export function parseOpenRouterExtractionResponse(text: string): ExtractionResponse {
+  const envelope = getJsonEnvelope(text);
+  if (!envelope) return {};
+  try {
+    return JSON.parse(envelope) as ExtractionResponse;
+  } catch (error) {
+    const salvaged = parseCandidateObjects(text);
+    if (salvaged.candidates?.length) return salvaged;
+    const message = error instanceof Error ? error.message : "Unknown JSON parse error";
+    throw new Error(`The model returned malformed or incomplete JSON (${message}). Try rerunning with fewer retained text chunks, a larger-context model, or web search disabled.`);
+  }
+}
+
+function splitLevelAndRationale(value: unknown): { level: "Low" | "Medium" | "High"; rationale?: string } {
+  const text = String(value ?? "").trim();
+  const match = text.match(/\b(low|medium|high)\b/i);
+  const level = match ? (match[1][0].toUpperCase() + match[1].slice(1).toLowerCase()) as "Low" | "Medium" | "High" : "Medium";
+  const rationale = text
+    .replace(new RegExp(`\\b${level}\\b`, "i"), "")
+    .replace(/^[\s:;,.()-]+/, "")
+    .trim();
+  return { level, rationale: rationale || undefined };
+}
+
+function clampScaleValue(value: unknown): 1 | 2 | 3 | 4 | 5 {
+  const rounded = Math.round(Number(value));
+  if (!Number.isFinite(rounded)) return 3;
+  return Math.min(5, Math.max(1, rounded)) as 1 | 2 | 3 | 4 | 5;
 }
 
 export async function fetchOpenRouterModels(apiKey?: string): Promise<OpenRouterModelMetadata[]> {
@@ -120,6 +217,7 @@ ${request.chunks
           ]
         : undefined,
       temperature: 0.2,
+      max_tokens: 12000,
       response_format: { type: "json_object" }
     })
   });
@@ -129,9 +227,13 @@ ${request.chunks
     throw new Error(`OpenRouter extraction failed with ${response.status}: ${text.slice(0, 300)}`);
   }
 
-  const data = (await response.json()) as { choices?: { message?: { content?: string } }[] };
+  const data = (await response.json()) as { choices?: { finish_reason?: string; message?: { content?: string } }[] };
+  const finishReason = data.choices?.[0]?.finish_reason;
   const content = data.choices?.[0]?.message?.content ?? "{}";
-  const parsed = extractJson(content);
+  if (finishReason === "length") {
+    throw new Error("The model response was cut off before valid JSON could be completed. Rerun with fewer retained text chunks or choose a model with a larger output limit.");
+  }
+  const parsed = parseOpenRouterExtractionResponse(content);
   return (parsed.candidates ?? []).map((candidate) => ({
     ...candidate,
     id: `cand-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
@@ -198,6 +300,8 @@ export function applyAiCandidate(store: StrategyStore, candidate: AiCandidate): 
   }
 
   if (candidate.kind === "Assumption") {
+    const impact = splitLevelAndRationale(payload.impact);
+    const confidence = splitLevelAndRationale(payload.confidence);
     return {
       ...withCandidate,
       assumptions: [
@@ -205,8 +309,10 @@ export function applyAiCandidate(store: StrategyStore, candidate: AiCandidate): 
           id,
           projectId,
           statement: String(payload.statement ?? ""),
-          impact: payload.impact === "Low" || payload.impact === "Medium" ? payload.impact : "High",
-          confidence: payload.confidence === "High" || payload.confidence === "Low" ? payload.confidence : "Medium",
+          impact: impact.level,
+          confidence: confidence.level,
+          impactRationale: String(payload.impactRationale ?? impact.rationale ?? ""),
+          confidenceRationale: String(payload.confidenceRationale ?? confidence.rationale ?? ""),
           validationTest: String(payload.validationTest ?? ""),
           invalidationTrigger: String(payload.invalidationTrigger ?? ""),
           linkedEvidenceIds: [],
@@ -278,8 +384,8 @@ export function applyAiCandidate(store: StrategyStore, candidate: AiCandidate): 
           id,
           projectId,
           failureCause: String(payload.failureCause ?? ""),
-          likelihood: [1, 2, 3, 4, 5].includes(Number(payload.likelihood)) ? (Number(payload.likelihood) as 1 | 2 | 3 | 4 | 5) : 3,
-          severity: [1, 2, 3, 4, 5].includes(Number(payload.severity)) ? (Number(payload.severity) as 1 | 2 | 3 | 4 | 5) : 3,
+          likelihood: clampScaleValue(payload.likelihood),
+          severity: clampScaleValue(payload.severity),
           mitigation: String(payload.mitigation ?? ""),
           earlyWarning: String(payload.earlyWarning ?? ""),
           owner: typeof payload.owner === "string" ? payload.owner : undefined,

@@ -99,6 +99,14 @@ ${recommendation ? `${recommendation.optionName} ranks first in the current weig
 ## Option scoring
 ${totals.map((item) => `- #${item.rank} ${item.optionName}: ${item.total.toFixed(2)}/5 weighted score`).join("\n") || "- No scoring model available."}
 
+## Watch-outs
+${weakAssumptions.map((item) => `- High-impact low-confidence assumption: ${item.statement}`).join("\n") || "- No high-impact low-confidence assumptions flagged."}
+
+## Next actions
+- Validate the top assumptions before final executive review.
+- Review scoring rationales for the highest-weight criteria.
+- Refresh evidence dates before publishing the recommendation.
+
 ## Key assumptions
 ${assumptionTableMarkdown(highImpactAssumptions)}
 
@@ -107,14 +115,6 @@ ${sensitivityDrivers.length ? `Top sensitivity drivers: ${sensitivityDrivers.joi
 
 ## Pre-mortem
 ${premortemTableMarkdown(premortems)}
-
-## Watch-outs
-${weakAssumptions.map((item) => `- High-impact low-confidence assumption: ${item.statement}`).join("\n") || "- No high-impact low-confidence assumptions flagged."}
-
-## Next actions
-- Validate the top assumptions before final executive review.
-- Review scoring rationales for the highest-weight criteria.
-- Refresh evidence dates before publishing the recommendation.
 
 ## Evidence base
 ${evidenceTableMarkdown(evidence)}
@@ -137,6 +137,9 @@ export function generateDetailedBrief(store: StrategyStore, projectId: string): 
   const premortems = store.premortems
     .filter((item) => item.projectId === projectId)
     .sort((a, b) => b.likelihood * b.severity - a.likelihood * a.severity);
+  const weakAssumptions = assumptions.filter(
+    (item) => item.impact === "High" && item.confidence === "Low"
+  );
   const chartInsights = store.chartInsights.filter((item) => item.projectId === projectId);
   const acceptedAiNotes = store.aiCandidates.filter(
     (item) => item.projectId === projectId && item.status === "Accepted" && item.kind === "BriefNote"
@@ -153,16 +156,25 @@ export function generateDetailedBrief(store: StrategyStore, projectId: string): 
 ## 2. Recommendation Logic
 ${recommendation ? `The current model recommends ${recommendation.optionName} with a weighted score of ${recommendation.total.toFixed(2)}/5.` : "No recommendation is available because the model is incomplete."}
 
+## 3. Option Scoring
 Ranking:
 ${totals.map((item) => `- #${item.rank}: ${item.optionName} at ${item.total.toFixed(2)}/5; missing scores: ${item.missingScores}`).join("\n") || "- No options scored."}
 
-## 3. Evidence Trail
+## 4. Watch-Outs
+${weakAssumptions.map((item) => `- High-impact low-confidence assumption: ${item.statement}`).join("\n") || "- No high-impact low-confidence assumptions flagged."}
+
+## 5. Next Actions
+- Validate high-impact assumptions and unresolved AI-generated claims before final publication.
+- Review score rationales for the highest-weight criteria.
+- Refresh source dates and document references before executive circulation.
+
+## 6. Evidence Trail
 ${evidenceTableMarkdown(evidence)}
 
-## 4. Assumption and Uncertainty Ledger
+## 7. Assumption and Uncertainty Ledger
 ${assumptionTableMarkdown(assumptions)}
 
-## 5. Scoring Method
+## 8. Scoring Method
 Criteria:
 ${criteria.map((item) => `- ${item.name}: ${item.weight}%`).join("\n") || "- No criteria entered."}
 
@@ -173,24 +185,24 @@ ${scores.map((score) => {
   return `- ${option?.name ?? score.optionId} / ${criterion?.name ?? score.criterionId}: ${score.score}/5. ${score.rationale || "No rationale entered."}`;
 }).join("\n") || "- No scores entered."}
 
-## 6. Sensitivity and What Could Change the Answer
+## 9. Sensitivity and What Could Change the Answer
 ${findSensitivityDrivers(options, criteria, scores).length
     ? `Potential recommendation-changing drivers: ${findSensitivityDrivers(options, criteria, scores).join(", ")}.`
     : "No recommendation-changing driver found in the default +/-20 point test."}
 
-## 7. Risk Pre-mortem
+## 10. Risk Pre-mortem
 ${premortemTableMarkdown(premortems)}
 
-## 8. Financial and Market Signals
+## 11. Financial and Market Signals
 ${chartInsights.map((item) => `- ${item.title}: ${item.summary}`).join("\n") || "- No chart insights saved."}
 
-## 9. AI-Assisted Notes Under Review
+## 12. AI-Assisted Notes Under Review
 ${acceptedAiNotes.map((item) => {
   const payload = item.payload as { title?: string; body?: string };
   return `- ${payload.title || "Brief note"}: ${payload.body || item.rationale}`;
 }).join("\n") || "- No accepted AI brief notes."}
 
-## 10. Audit Gaps
+## 13. Audit Gaps
 - Refresh source dates before publication.
 - Check whether high-impact low-confidence assumptions have validation tests.
 - Confirm all high-weight score rationales are backed by evidence.

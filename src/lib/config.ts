@@ -93,7 +93,8 @@ export function ensureStoreConfig(store: Partial<StrategyStore>): StrategyStore 
         appTitle: store.config?.aiSettings?.appTitle ?? "Stratis - Strategy & Insight Engine"
       },
       modelMetadata: store.config?.modelMetadata ?? [],
-      modelMetadataRetrievedAt: store.config?.modelMetadataRetrievedAt
+      modelMetadataRetrievedAt: store.config?.modelMetadataRetrievedAt,
+      themeMode: store.config?.themeMode ?? "light"
     },
     projects: store.projects ?? [],
     evidence: store.evidence ?? [],

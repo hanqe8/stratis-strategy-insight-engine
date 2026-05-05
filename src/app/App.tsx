@@ -118,6 +118,31 @@ function resolveOpenRouterModelDisplay(store: StrategyStore): string {
   return modelId || "No model selected";
 }
 
+function defaultWorkspaceExportFilename(): string {
+  return `stratis-workspace-${new Date().toISOString().slice(0, 10)}.json`;
+}
+
+function normalizeJsonFilename(value: string): string {
+  const fallback = defaultWorkspaceExportFilename();
+  const cleaned = value
+    .split("")
+    .filter((char) => char.charCodeAt(0) >= 32)
+    .join("")
+    .trim()
+    .replace(/[<>:"/\\|?*]/g, "-")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^\.+/, "")
+    .replace(/\.+$/, "");
+  const safe = cleaned || fallback;
+  return safe.toLowerCase().endsWith(".json") ? safe : `${safe}.json`;
+}
+
+function clampFivePointScale(value: number): 1 | 2 | 3 | 4 | 5 {
+  const rounded = Math.round(Number.isFinite(value) ? value : 3);
+  return Math.min(5, Math.max(1, rounded)) as 1 | 2 | 3 | 4 | 5;
+}
+
 function markdownToPlainText(markdown: string): string {
   return markdown
     .replace(/^#{1,6}\s+/gm, "")
@@ -142,7 +167,9 @@ export function App() {
     onConfirm: () => void | Promise<void>;
   } | null>(null);
   const [globalSettingsOpen, setGlobalSettingsOpen] = useState(false);
-  const [settingsSection, setSettingsSection] = useState<"openrouter" | "data" | "types" | "statuses" | "sources">("openrouter");
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [exportFilename, setExportFilename] = useState(defaultWorkspaceExportFilename);
+  const [settingsSection, setSettingsSection] = useState<"openrouter" | "appearance" | "data" | "types" | "statuses" | "sources">("openrouter");
   const [uploadStatus, setUploadStatus] = useState("");
   const [aiError, setAiError] = useState("");
   const [modelRefreshStatus, setModelRefreshStatus] = useState("");
@@ -157,12 +184,13 @@ export function App() {
   const [briefDisplayMode, setBriefDisplayMode] = useState<"text" | "markdown">("text");
   const [lastOutputRefresh, setLastOutputRefresh] = useState(() => new Date().toLocaleTimeString());
   const [lastSavedAt, setLastSavedAt] = useState(() => new Date().toLocaleTimeString());
-  const [backupReminderVisible, setBackupReminderVisible] = useState(false);
+  const [backupRecommendedProjectIds, setBackupRecommendedProjectIds] = useState<string[]>([]);
   const workspaceRef = useRef<HTMLDivElement | null>(null);
   const [csvRows, setCsvRows] = useState<Record<string, string | number>[]>([]);
   const [xField, setXField] = useState("");
   const [yField, setYField] = useState("");
   const [chartType, setChartType] = useState<"line" | "bar">("line");
+  const isDarkMode = store.config.themeMode === "dark";
 
   useEffect(() => {
     saveStore(store);
@@ -177,6 +205,9 @@ export function App() {
   useEffect(() => {
     if (!openRouterKey.trim()) setWebSearchEnabled(false);
   }, [openRouterKey]);
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", isDarkMode);
+  }, [isDarkMode]);
 
   const project = store.projects.find((item) => item.id === activeProjectId) ?? store.projects[0];
   const projectId = project?.id ?? "";
@@ -203,16 +234,27 @@ export function App() {
   const sortedSourceTypes = useMemo(() => sortOptionsAlphabetically(store.config.sourceTypes, formatSourceType), [store.config.sourceTypes]);
   const openRouterKeyPresent = Boolean(openRouterKey.trim());
   const selectedOpenRouterModel = useMemo(() => resolveOpenRouterModelDisplay(store), [store]);
+  const backupReminderVisible = Boolean(projectId && backupRecommendedProjectIds.includes(projectId));
 
-  function updateStore(next: StrategyStore) {
+  function updateStore(next: StrategyStore, backupProjectId = projectId) {
     setStore(next);
     setLastOutputRefresh(new Date().toLocaleTimeString());
-    setBackupReminderVisible(true);
+    if (backupProjectId) {
+      setBackupRecommendedProjectIds((current) =>
+        current.includes(backupProjectId) ? current : [...current, backupProjectId]
+      );
+    }
+  }
+
+  function openWorkspaceExportDialog() {
+    setExportFilename(defaultWorkspaceExportFilename());
+    setExportModalOpen(true);
   }
 
   function exportWorkspaceJson() {
-    downloadText("stratis-workspace-backup.json", exportStore(store), "application/json");
-    setBackupReminderVisible(false);
+    downloadText(normalizeJsonFilename(exportFilename), exportStore(store), "application/json");
+    setBackupRecommendedProjectIds([]);
+    setExportModalOpen(false);
   }
 
   function updateOpenRouterKey(value: string) {
@@ -255,7 +297,7 @@ export function App() {
       createdAt: todayIso(),
       updatedAt: todayIso()
     };
-    updateStore({ ...store, projects: [nextProject, ...store.projects] });
+    updateStore({ ...store, projects: [nextProject, ...store.projects] }, id);
     setActiveProjectId(id);
     setActiveTab("overview");
   }
@@ -302,7 +344,7 @@ export function App() {
       premortems: [...premortems.map((item) => ({ ...item, id: makeId("pm"), projectId: id })), ...store.premortems],
       decisionLog: store.decisionLog,
       chartInsights: [...chartInsights.map((item) => ({ ...item, id: makeId("ci"), projectId: id })), ...store.chartInsights]
-    });
+    }, id);
     setActiveProjectId(id);
   }
 
@@ -326,7 +368,8 @@ export function App() {
       extractedDocuments: store.extractedDocuments.filter((item) => item.projectId !== targetProjectId),
       documentChunks: store.documentChunks.filter((item) => item.projectId !== targetProjectId),
       aiCandidates: store.aiCandidates.filter((item) => item.projectId !== targetProjectId)
-    });
+    }, targetProjectId);
+    setBackupRecommendedProjectIds((current) => current.filter((id) => id !== targetProjectId));
     if (activeProjectId === targetProjectId) {
       setActiveProjectId(nextProjects[Math.max(0, targetIndex - 1)]?.id ?? nextProjects[0]?.id ?? "");
     }
@@ -590,7 +633,7 @@ export function App() {
       window.clearInterval(progressTimer);
       setAiError(error instanceof Error ? error.message : "OpenRouter extraction failed.");
       setUploadStatus("");
-      setAiProgress({ isRunning: false, percent: 0, label: "Analysis failed." });
+      setAiProgress({ isRunning: false, percent: Math.max(progress, 88), label: "Analysis failed." });
     }
   }
 
@@ -675,7 +718,7 @@ export function App() {
   const chartData = csvRows.map((row) => ({ ...row, [yField]: Number(row[yField]) }));
 
   return (
-    <div className="min-h-screen bg-paper text-ink">
+    <div className={`${isDarkMode ? "dark" : ""} min-h-screen bg-paper text-ink`}>
       <header className="no-print border-b border-ink bg-ink px-4 py-3 text-white shadow-sm">
         <div className="mx-auto flex max-w-[1500px] flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -702,8 +745,8 @@ export function App() {
             <button className="inline-flex items-center gap-2 rounded-md border border-white/20 bg-white/10 px-3 py-2 text-sm" onClick={openSettings}>
               <Settings size={16} /> Settings
             </button>
-            <button className="inline-flex items-center gap-2 rounded-md border border-white/20 bg-white/10 px-3 py-2 text-sm" onClick={exportWorkspaceJson}>
-              <Download size={16} /> JSON
+            <button className="inline-flex items-center gap-2 rounded-md border border-white/20 bg-white/10 px-3 py-2 text-sm" onClick={openWorkspaceExportDialog}>
+              <Download size={16} /> Export
             </button>
             <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-white/20 bg-white/10 px-3 py-2 text-sm">
               <Upload size={16} /> Import
@@ -732,7 +775,7 @@ export function App() {
         </div>
       </header>
 
-      <main className="mx-auto grid max-w-[1500px] grid-cols-1 gap-4 p-4 lg:grid-cols-[280px_minmax(0,1fr)_360px]">
+      <main className="mx-auto grid max-w-[1720px] grid-cols-1 gap-4 p-4 lg:grid-cols-[280px_minmax(0,1fr)] 2xl:grid-cols-[280px_minmax(640px,1fr)_minmax(520px,0.85fr)]">
         <aside className="no-print rounded-lg border border-line bg-white p-3 shadow-panel lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)] lg:overflow-auto">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-semibold uppercase text-moss">Projects</h2>
@@ -845,8 +888,10 @@ export function App() {
           {backupReminderVisible && (
             <BackupReminder
               projectTitle={project.title}
-              onExport={exportWorkspaceJson}
-              onDismiss={() => setBackupReminderVisible(false)}
+              onExport={openWorkspaceExportDialog}
+              onDismiss={() =>
+                setBackupRecommendedProjectIds((current) => current.filter((id) => id !== projectId))
+              }
             />
           )}
 
@@ -1019,7 +1064,7 @@ export function App() {
           </div>
         </section>
 
-        <aside className="rounded-lg border border-line bg-white p-4 shadow-panel lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)] lg:overflow-auto">
+        <aside className="rounded-lg border border-line bg-white p-4 shadow-panel lg:col-start-2 2xl:col-start-auto 2xl:sticky 2xl:top-4 2xl:max-h-[calc(100vh-2rem)] 2xl:overflow-auto">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-2">
               <h2 className="text-sm font-semibold uppercase text-moss">Brief Preview</h2>
@@ -1045,7 +1090,7 @@ export function App() {
             <p className="mt-3">Recommendation: <strong>{totals[0]?.optionName ?? "Not scored"}</strong></p>
           </div>
           {briefDisplayMode === "markdown" ? (
-            <pre className="mt-3 max-h-96 overflow-auto whitespace-pre-wrap rounded-md border border-line bg-white p-3 text-xs leading-5">
+            <pre className="mt-3 max-h-96 overflow-auto whitespace-pre-wrap break-words rounded-md border border-line bg-white p-3 text-xs leading-5">
               {activePreviewBrief}
             </pre>
           ) : (
@@ -1126,13 +1171,22 @@ export function App() {
             activeSection={settingsSection}
             modelRefreshStatus={modelRefreshStatus}
             modelRefreshError={modelRefreshError}
+            isDarkMode={isDarkMode}
             onUpdate={updateStore}
             onOpenRouterKey={updateOpenRouterKey}
             onRefreshModels={refreshOpenRouterModels}
             onOpenConfigModal={setConfigModal}
-            onExportJson={exportWorkspaceJson}
+            onExportJson={openWorkspaceExportDialog}
           />
         </GlobalSettingsModal>
+      )}
+      {exportModalOpen && (
+        <ExportWorkspaceModal
+          filename={exportFilename}
+          onFilename={setExportFilename}
+          onCancel={() => setExportModalOpen(false)}
+          onExport={exportWorkspaceJson}
+        />
       )}
       {confirmation && (
         <ConfirmDialog
@@ -1208,6 +1262,56 @@ function BackupReminder({
         </div>
       </div>
     </section>
+  );
+}
+
+function ExportWorkspaceModal({
+  filename,
+  onFilename,
+  onCancel,
+  onExport
+}: {
+  filename: string;
+  onFilename: (value: string) => void;
+  onCancel: () => void;
+  onExport: () => void;
+}) {
+  const normalizedFilename = normalizeJsonFilename(filename);
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
+      <div className="w-full max-w-lg rounded-lg bg-white p-4 shadow-panel">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">Export Workspace JSON</h2>
+            <p className="copy-block mt-1 text-sm text-moss">
+              This exports a JSON file containing the current browser-local Stratis workspace, including projects, configuration, evidence, assumptions, options, scores, pre-mortems, extracted text chunks, and AI review candidates. Session-only OpenRouter API keys are not included.
+            </p>
+          </div>
+          <button className="rounded-md border border-line p-2" aria-label="Close export dialog" title="Close export dialog" onClick={onCancel}>
+            <X size={16} />
+          </button>
+        </div>
+        <label className="mt-4 grid gap-1 text-sm">
+          <span className="font-medium">File Name</span>
+          <input
+            className="rounded-md border border-line px-3 py-2"
+            value={filename}
+            onChange={(event) => onFilename(event.target.value)}
+            placeholder="stratis-workspace-2026-05-05.json"
+          />
+        </label>
+        <p className="mt-2 text-xs text-moss">The file will be saved as: {normalizedFilename}</p>
+        <div className="mt-4 flex flex-wrap justify-end gap-2">
+          <button className="rounded-md border border-line px-3 py-2 text-sm" onClick={onCancel}>
+            Cancel
+          </button>
+          <button className="inline-flex items-center gap-2 rounded-md bg-ink px-3 py-2 text-sm font-medium text-white" onClick={onExport}>
+            <Download size={16} /> Export JSON
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1316,16 +1420,18 @@ function BulkUploadPanel({
         <Metric label="Pending AI review" value={pendingCount.toString()} warning={pendingCount > 0} />
       </div>
       {documents.length > 0 && (
-        <div className="mt-3 grid gap-2">
-          {documents.slice(0, 4).map((document) => (
-            <div key={document.id} className="rounded-md border border-line p-3 text-sm">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <strong>{document.fileName}</strong>
-                <span>{document.chunkCount} chunks · {document.textRetained ? "text retained" : "text purged"}</span>
+        <div className="mt-3 max-h-72 overflow-y-auto pr-1">
+          <div className="grid gap-2">
+            {documents.map((document) => (
+              <div key={document.id} className="rounded-md border border-line p-3 text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <strong>{document.fileName}</strong>
+                  <span>{document.chunkCount} chunks / {document.textRetained ? "text retained" : "text purged"}</span>
+                </div>
+                {document.limitationNote && <p className="mt-1 text-rust">{document.limitationNote}</p>}
               </div>
-              {document.limitationNote && <p className="mt-1 text-rust">{document.limitationNote}</p>}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
     </section>
@@ -1482,14 +1588,34 @@ function CandidateEditor({
 
   return (
     <div className="mt-3 grid gap-3">
-      <div className="grid gap-2 md:grid-cols-2">
+      <div className="grid min-w-0 gap-2">
         {fields.map((field) => (
-          <label key={field.key} className={field.long ? "grid gap-1 text-sm md:col-span-2" : "grid gap-1 text-sm"}>
+          <label key={field.key} className="grid min-w-0 gap-1 text-sm">
             <span className="font-medium">{field.label}</span>
             {field.long ? (
-              <textarea className="min-h-20 rounded-md border border-line px-3 py-2" value={String(payload[field.key] ?? "")} onChange={(event) => updatePayload(field.key, event.target.value)} />
+              <textarea className="min-h-20 w-full min-w-0 resize-y overflow-auto rounded-md border border-line px-3 py-2" value={String(payload[field.key] ?? "")} onChange={(event) => updatePayload(field.key, event.target.value)} />
+            ) : field.options ? (
+              <select className="w-full min-w-0 rounded-md border border-line px-3 py-2" value={String(payload[field.key] ?? field.options[0])} onChange={(event) => updatePayload(field.key, event.target.value)}>
+                {field.options.map((option) => <option key={option} value={option}>{option}</option>)}
+              </select>
             ) : (
-              <input className="rounded-md border border-line px-3 py-2" type={field.type ?? "text"} value={String(payload[field.key] ?? "")} onChange={(event) => updatePayload(field.key, field.type === "number" ? Number(event.target.value) : event.target.value)} />
+              <input
+                className="w-full min-w-0 rounded-md border border-line px-3 py-2"
+                type={field.type ?? "text"}
+                min={field.min}
+                max={field.max}
+                step={field.step}
+                value={String(payload[field.key] ?? "")}
+                onChange={(event) => {
+                  const numericValue = Number(event.target.value);
+                  const value = field.type === "number"
+                    ? field.min === 1 && field.max === 5
+                      ? clampFivePointScale(numericValue)
+                      : numericValue
+                    : event.target.value;
+                  updatePayload(field.key, value);
+                }}
+              />
             )}
           </label>
         ))}
@@ -1539,13 +1665,13 @@ function CandidateEditor({
   );
 }
 
-function getCandidateFields(kind: AiCandidate["kind"]): { key: string; label: string; long?: boolean; type?: "number" }[] {
+function getCandidateFields(kind: AiCandidate["kind"]): { key: string; label: string; long?: boolean; type?: "number"; options?: string[]; min?: number; max?: number; step?: number }[] {
   if (kind === "Evidence") return [{ key: "sourceTitle", label: "Source Title" }, { key: "sourceUrl", label: "Source URL" }, { key: "sourceDate", label: "Source Date" }, { key: "claim", label: "Claim", long: true }, { key: "implication", label: "Decision Implication", long: true }, { key: "relevance", label: "Relevance", type: "number" }, { key: "notes", label: "Notes", long: true }];
-  if (kind === "Assumption") return [{ key: "statement", label: "Assumption Statement", long: true }, { key: "impact", label: "Impact" }, { key: "confidence", label: "Confidence" }, { key: "validationTest", label: "Validation Test", long: true }, { key: "invalidationTrigger", label: "Invalidation Trigger", long: true }];
+  if (kind === "Assumption") return [{ key: "statement", label: "Assumption Statement", long: true }, { key: "impact", label: "Impact", options: impactLevels }, { key: "impactRationale", label: "Impact Rationale", long: true }, { key: "confidence", label: "Confidence", options: confidenceLevels }, { key: "confidenceRationale", label: "Confidence Rationale", long: true }, { key: "validationTest", label: "Validation Test", long: true }, { key: "invalidationTrigger", label: "Invalidation Trigger", long: true }];
   if (kind === "Option") return [{ key: "name", label: "Option Name" }, { key: "description", label: "Description", long: true }];
   if (kind === "Criterion") return [{ key: "name", label: "Criterion Name" }, { key: "weight", label: "Weight", type: "number" }];
   if (kind === "Score") return [{ key: "optionId", label: "Option ID" }, { key: "criterionId", label: "Criterion ID" }, { key: "score", label: "Score", type: "number" }, { key: "rationale", label: "Score Rationale", long: true }];
-  if (kind === "Premortem") return [{ key: "failureCause", label: "Failure Cause", long: true }, { key: "likelihood", label: "Likelihood", type: "number" }, { key: "severity", label: "Severity", type: "number" }, { key: "mitigation", label: "Mitigation", long: true }, { key: "earlyWarning", label: "Early Warning", long: true }, { key: "owner", label: "Owner" }];
+  if (kind === "Premortem") return [{ key: "failureCause", label: "Failure Cause", long: true }, { key: "likelihood", label: "Likelihood (1-5)", type: "number", min: 1, max: 5, step: 1 }, { key: "severity", label: "Severity (1-5)", type: "number", min: 1, max: 5, step: 1 }, { key: "mitigation", label: "Mitigation", long: true }, { key: "earlyWarning", label: "Early Warning", long: true }, { key: "owner", label: "Owner" }];
   if (kind === "BriefNote") return [{ key: "title", label: "Brief Note Title" }, { key: "body", label: "Brief Note", long: true }];
   return [{ key: "decisionChange", label: "Decision Change", long: true }, { key: "reason", label: "Reason", long: true }, { key: "recommendationBefore", label: "Recommendation Before" }, { key: "recommendationAfter", label: "Recommendation After" }];
 }
@@ -1632,13 +1758,13 @@ function ToggleSwitch({
       aria-checked={enabled}
       aria-label={label}
       disabled={disabled}
-      className={`mt-1 inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors ${
+      className={`switch-track mt-1 inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors ${
         enabled ? "border-teal bg-teal" : "border-line bg-white"
       } ${disabled ? "cursor-not-allowed opacity-50" : ""}`}
       onClick={() => onChange(!enabled)}
     >
       <span
-        className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${
+        className={`switch-thumb h-5 w-5 rounded-full bg-white shadow transition-transform ${
           enabled ? "translate-x-5" : "translate-x-0.5"
         }`}
       />
@@ -1710,11 +1836,11 @@ function MarkdownTable({ lines }: { lines: string[] }) {
 
   return (
     <div className="my-3 overflow-x-auto rounded-md border border-line">
-      <table className="min-w-[720px] w-full text-left text-xs">
+      <table className="w-full table-fixed text-left text-xs">
         <thead className="bg-paper">
           <tr>
             {headers.map((header) => (
-              <th key={header} className="p-2">{formatInlineMarkdown(header)}</th>
+              <th key={header} className="break-words p-2 align-top">{formatInlineMarkdown(header)}</th>
             ))}
           </tr>
         </thead>
@@ -1722,7 +1848,7 @@ function MarkdownTable({ lines }: { lines: string[] }) {
           {rows.map((row, rowIndex) => (
             <tr key={rowIndex} className="border-t border-line align-top">
               {row.map((cell, cellIndex) => (
-                <td key={`${rowIndex}-${cellIndex}`} className="p-2">{formatInlineMarkdown(cell)}</td>
+                <td key={`${rowIndex}-${cellIndex}`} className="break-words p-2 align-top">{formatInlineMarkdown(cell)}</td>
               ))}
             </tr>
           ))}
@@ -2004,13 +2130,14 @@ function GlobalSettingsModal({
   onClose,
   children
 }: {
-  activeSection: "openrouter" | "data" | "types" | "statuses" | "sources";
-  onSection: (section: "openrouter" | "data" | "types" | "statuses" | "sources") => void;
+  activeSection: "openrouter" | "appearance" | "data" | "types" | "statuses" | "sources";
+  onSection: (section: "openrouter" | "appearance" | "data" | "types" | "statuses" | "sources") => void;
   onClose: () => void;
   children: React.ReactNode;
 }) {
-  const sections: { id: "openrouter" | "data" | "types" | "statuses" | "sources"; label: string }[] = [
+  const sections: { id: "openrouter" | "appearance" | "data" | "types" | "statuses" | "sources"; label: string }[] = [
     { id: "openrouter", label: "OpenRouter" },
+    { id: "appearance", label: "Appearance" },
     { id: "data", label: "Data & Backup" },
     { id: "types", label: "Project Types" },
     { id: "statuses", label: "Project Statuses" },
@@ -2062,6 +2189,8 @@ function AssumptionsWorkspace({ assumptions, evidence, onAdd, onUpdate }: { assu
               <select className="rounded-md border border-line px-3 py-2" value={item.confidence} onChange={(event) => onUpdate(item.id, { confidence: event.target.value as Confidence })}>
                 {confidenceLevels.map((level) => <option key={level}>{level}</option>)}
               </select>
+              <textarea className="min-h-20 resize-y overflow-auto rounded-md border border-line px-3 py-2" value={item.impactRationale ?? ""} onChange={(event) => onUpdate(item.id, { impactRationale: event.target.value })} aria-label="Impact rationale" placeholder="Impact rationale or notes" />
+              <textarea className="min-h-20 resize-y overflow-auto rounded-md border border-line px-3 py-2" value={item.confidenceRationale ?? ""} onChange={(event) => onUpdate(item.id, { confidenceRationale: event.target.value })} aria-label="Confidence rationale" placeholder="Confidence rationale or notes" />
               <textarea className="min-h-20 resize-y overflow-auto rounded-md border border-line px-3 py-2" value={item.validationTest} onChange={(event) => onUpdate(item.id, { validationTest: event.target.value })} aria-label="Validation test" />
               <textarea className="min-h-20 resize-y overflow-auto rounded-md border border-line px-3 py-2" value={item.invalidationTrigger} onChange={(event) => onUpdate(item.id, { invalidationTrigger: event.target.value })} aria-label="Invalidation trigger" />
             </div>
@@ -2324,6 +2453,9 @@ function PremortemWorkspace({ premortems, onAdd, onUpdate }: { premortems: Premo
   return (
     <div>
       <WorkspaceHeader title="Pre-Mortem Builder" action="Add Risk" onAction={onAdd} />
+      <div className="copy-block mt-3 rounded-md border border-line bg-paper p-3 text-sm text-moss">
+        Likelihood and severity use a 1-5 scale: 1 is very low, 3 is moderate, and 5 is very high. A 1-5 scale is used instead of 0-10 because it matches the app's evidence relevance and option scoring scales, reduces false precision, and keeps risk scores easy to compare.
+      </div>
       <div className="mt-4 grid gap-3">
         {sorted.map((item) => (
           <div key={item.id} className="rounded-md border border-line p-3">
@@ -2332,8 +2464,8 @@ function PremortemWorkspace({ premortems, onAdd, onUpdate }: { premortems: Premo
             </div>
             <input className="w-full rounded-md border border-line px-3 py-2 font-medium" value={item.failureCause} onChange={(event) => onUpdate(item.id, { failureCause: event.target.value })} aria-label="Failure cause" />
             <div className="mt-2 grid gap-2 md:grid-cols-3">
-              <label className="text-sm">Likelihood <input className="mt-1 w-full rounded-md border border-line px-3 py-2" type="number" min={1} max={5} value={item.likelihood} onChange={(event) => onUpdate(item.id, { likelihood: Number(event.target.value) as PremortemItem["likelihood"] })} /></label>
-              <label className="text-sm">Severity <input className="mt-1 w-full rounded-md border border-line px-3 py-2" type="number" min={1} max={5} value={item.severity} onChange={(event) => onUpdate(item.id, { severity: Number(event.target.value) as PremortemItem["severity"] })} /></label>
+              <label className="text-sm">Likelihood (1-5) <input className="mt-1 w-full rounded-md border border-line px-3 py-2" type="number" min={1} max={5} step={1} value={item.likelihood} onChange={(event) => onUpdate(item.id, { likelihood: clampFivePointScale(Number(event.target.value)) })} /></label>
+              <label className="text-sm">Severity (1-5) <input className="mt-1 w-full rounded-md border border-line px-3 py-2" type="number" min={1} max={5} step={1} value={item.severity} onChange={(event) => onUpdate(item.id, { severity: clampFivePointScale(Number(event.target.value)) })} /></label>
               <label className="text-sm">Owner <input className="mt-1 w-full rounded-md border border-line px-3 py-2" value={item.owner ?? ""} onChange={(event) => onUpdate(item.id, { owner: event.target.value })} /></label>
             </div>
             <textarea className="mt-2 min-h-16 w-full rounded-md border border-line px-3 py-2" value={item.mitigation} onChange={(event) => onUpdate(item.id, { mitigation: event.target.value })} aria-label="Mitigation" />
@@ -2444,6 +2576,7 @@ function SettingsWorkspace({
   activeSection,
   modelRefreshStatus,
   modelRefreshError,
+  isDarkMode,
   onUpdate,
   onOpenRouterKey,
   onRefreshModels,
@@ -2452,9 +2585,10 @@ function SettingsWorkspace({
 }: {
   store: StrategyStore;
   openRouterKey: string;
-  activeSection: "openrouter" | "data" | "types" | "statuses" | "sources";
+  activeSection: "openrouter" | "appearance" | "data" | "types" | "statuses" | "sources";
   modelRefreshStatus: string;
   modelRefreshError: string;
+  isDarkMode: boolean;
   onUpdate: (store: StrategyStore) => void;
   onOpenRouterKey: (value: string) => void;
   onRefreshModels: () => void;
@@ -2566,6 +2700,17 @@ function SettingsWorkspace({
             {store.config.modelMetadata.length > 0 && <p className="mt-2 text-sm text-moss">Loaded {store.config.modelMetadata.length} model records sorted alphabetically.</p>}
           </div>
         )}
+        {activeSection === "appearance" && (
+          <AppearanceSettings
+            isDarkMode={isDarkMode}
+            onToggle={(enabled) =>
+              onUpdate({
+                ...store,
+                config: { ...store.config, themeMode: enabled ? "dark" : "light" }
+              })
+            }
+          />
+        )}
         {activeSection === "data" && (
           <DataStorageSettings store={store} openRouterKeyPresent={Boolean(openRouterKey.trim())} onExportJson={onExportJson} />
         )}
@@ -2650,6 +2795,46 @@ function DataStorageSettings({
   );
 }
 
+function AppearanceSettings({
+  isDarkMode,
+  onToggle
+}: {
+  isDarkMode: boolean;
+  onToggle: (enabled: boolean) => void;
+}) {
+  return (
+    <div className="rounded-md border border-line p-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="max-w-2xl">
+          <h3 className="font-semibold">Appearance</h3>
+          <p className="copy-block mt-1 text-sm text-moss">
+            Dark mode reduces glare for long strategy review sessions while preserving the same information density, table contrast, and form layout.
+          </p>
+        </div>
+        <div className="flex items-center gap-3 rounded-md border border-line bg-paper px-3 py-2 text-sm">
+          <span className={!isDarkMode ? "font-semibold" : "text-moss"}>Light</span>
+          <ToggleSwitch enabled={isDarkMode} onChange={onToggle} label="Toggle dark mode" />
+          <span className={isDarkMode ? "font-semibold" : "text-moss"}>Dark</span>
+        </div>
+      </div>
+      <div className="mt-4 grid gap-3 md:grid-cols-3">
+        <div className="rounded-md border border-line bg-paper p-3 text-sm">
+          <p className="font-semibold">Navigation</p>
+          <p className="mt-1 text-moss">High-contrast panels and focus states remain visible for keyboard use.</p>
+        </div>
+        <div className="rounded-md border border-line bg-paper p-3 text-sm">
+          <p className="font-semibold">Analysis Surfaces</p>
+          <p className="mt-1 text-moss">Tables, forms, and brief preview retain neutral contrast instead of decorative color shifts.</p>
+        </div>
+        <div className="rounded-md border border-line bg-paper p-3 text-sm">
+          <p className="font-semibold">Persistence</p>
+          <p className="mt-1 text-moss">The selected mode is saved with this browser-local workspace and included in JSON exports.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ConfigList({
   title,
   values,
@@ -2694,5 +2879,6 @@ function WorkspaceHeader({ title, action, onAction, secondaryAction, onSecondary
     </div>
   );
 }
+
 
 

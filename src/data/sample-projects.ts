@@ -16,7 +16,8 @@ export const sampleStore: StrategyStore = {
       appTitle: "Stratis - Strategy & Insight Engine"
     },
     modelMetadata: [],
-    modelMetadataRetrievedAt: undefined
+    modelMetadataRetrievedAt: undefined,
+    themeMode: "light"
   },
   projects: [
     {

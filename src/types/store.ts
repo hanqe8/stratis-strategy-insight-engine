@@ -12,6 +12,7 @@ export interface StrategyStore {
     aiSettings: AiSettings;
     modelMetadata: OpenRouterModelMetadata[];
     modelMetadataRetrievedAt?: string;
+    themeMode?: "light" | "dark";
   };
   projects: Project[];
   evidence: EvidenceItem[];
