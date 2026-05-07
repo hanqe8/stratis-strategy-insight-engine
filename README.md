@@ -43,7 +43,7 @@ Stratis is a portfolio-grade product build that demonstrates:
 
 | Use case | Example question |
 |---|---|
-| Market entry | Which ASEAN country and entry route should a digital wealth platform prioritise? |
+| Market entry | Which country and entry route should a digital wealth platform prioritise? |
 | Product strategy | Which product feature should be prioritised given impact, risk, and feasibility? |
 | Platform strategy | Which architecture option best balances reuse, control, cost, and compliance? |
 | Financial analysis | Which scenario changes the recommendation under different margin or growth assumptions? |
