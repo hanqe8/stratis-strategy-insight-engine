@@ -82,6 +82,19 @@ const tabs: { id: WorkspaceTab; label: string; icon: typeof BookOpen }[] = [
 
 const stratisLogoSrc = `${import.meta.env.BASE_URL}stratis-logo.png`;
 
+const chartAxisStyle = { fill: "var(--stratis-chart-tick)", fontSize: 11, fontWeight: 600 };
+const chartTooltipProps = {
+  wrapperClassName: "stratis-chart-tooltip",
+  contentStyle: {
+    background: "var(--stratis-chart-tooltip-bg)",
+    border: "1px solid var(--stratis-line)",
+    borderRadius: "var(--stratis-radius-md)",
+    color: "var(--stratis-chart-tooltip-text)"
+  },
+  itemStyle: { color: "var(--stratis-chart-tooltip-text)" },
+  labelStyle: { color: "var(--stratis-teal)", fontWeight: 700 }
+};
+
 const makeId = (prefix: string) =>
   `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -718,11 +731,11 @@ export function App() {
   const chartData = csvRows.map((row) => ({ ...row, [yField]: Number(row[yField]) }));
 
   return (
-    <div className={`${isDarkMode ? "dark" : ""} min-h-screen bg-paper text-ink`}>
-      <header className="no-print border-b border-ink bg-ink px-4 py-3 text-white shadow-sm">
+    <div className={`${isDarkMode ? "dark" : ""} stratis-app-shell min-h-screen bg-paper text-ink`}>
+      <header className="stratis-header no-print border-b border-teal px-4 py-3 text-white shadow-sm">
         <div className="mx-auto flex max-w-[1500px] flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <img src={stratisLogoSrc} alt="Stratis logo" className="h-11 w-11 object-contain" />
+            <img src={stratisLogoSrc} alt="Stratis logo" className="h-10 w-10 object-contain sm:h-11 sm:w-11" />
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-teal">STRATIS</p>
               <h1 className="text-lg font-semibold leading-tight sm:text-xl">Strategy & Insight Engine</h1>
@@ -730,7 +743,7 @@ export function App() {
           </div>
           <div className="flex flex-wrap gap-2">
             <button
-              className="inline-flex items-center gap-2 rounded-md bg-teal px-3 py-2 text-sm font-medium text-white"
+              className="inline-flex items-center gap-2 rounded-md bg-teal px-3 py-2 text-sm font-medium text-white hover:bg-teal-2"
               onClick={() =>
                 requestConfirmation(
                   "Create new project?",
@@ -776,7 +789,7 @@ export function App() {
       </header>
 
       <main className="mx-auto grid max-w-[1720px] grid-cols-1 gap-4 p-4 lg:grid-cols-[280px_minmax(0,1fr)] 2xl:grid-cols-[280px_minmax(640px,1fr)_minmax(520px,0.85fr)]">
-        <aside className="no-print rounded-lg border border-line bg-white p-3 shadow-panel lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)] lg:overflow-auto">
+        <aside className="no-print rounded-lg border border-line bg-surface p-3 shadow-panel lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)] lg:overflow-auto">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-semibold uppercase text-moss">Projects</h2>
             <button
@@ -799,7 +812,7 @@ export function App() {
             {store.projects.map((item, index) => (
               <div
                 key={item.id}
-                className={`rounded-md border p-2 ${item.id === projectId ? "border-ink bg-paper" : "border-line bg-white"}`}
+                className={`rounded-md border p-2 ${item.id === projectId ? "border-teal bg-teal-soft" : "border-line bg-surface"}`}
               >
                 <div className="flex items-start gap-2">
                   <button
@@ -812,7 +825,7 @@ export function App() {
                   </button>
                   <div className="flex shrink-0 items-center gap-1">
                     <button
-                      className="rounded-md border border-line bg-white p-1.5 text-moss disabled:cursor-not-allowed disabled:opacity-35"
+                      className="rounded-md border border-line bg-surface p-1.5 text-moss disabled:cursor-not-allowed disabled:opacity-35"
                       aria-label={`Move ${item.title} up`}
                       title={`Move ${item.title} up`}
                       disabled={index === 0}
@@ -821,7 +834,7 @@ export function App() {
                       <ArrowUp size={14} />
                     </button>
                     <button
-                      className="rounded-md border border-line bg-white p-1.5 text-moss disabled:cursor-not-allowed disabled:opacity-35"
+                      className="rounded-md border border-line bg-surface p-1.5 text-moss disabled:cursor-not-allowed disabled:opacity-35"
                       aria-label={`Move ${item.title} down`}
                       title={`Move ${item.title} down`}
                       disabled={index === store.projects.length - 1}
@@ -830,7 +843,7 @@ export function App() {
                       <ArrowDown size={14} />
                     </button>
                     <button
-                      className="rounded-md border border-line bg-white p-1.5 text-rust disabled:cursor-not-allowed disabled:opacity-35"
+                      className="rounded-md border border-line bg-surface p-1.5 text-danger disabled:cursor-not-allowed disabled:opacity-35"
                       aria-label={`Delete ${item.title}`}
                       title={`Delete ${item.title}`}
                       disabled={store.projects.length <= 1}
@@ -895,7 +908,7 @@ export function App() {
             />
           )}
 
-          <div className="rounded-lg border border-line bg-white p-4 shadow-panel">
+          <div className="rounded-lg border border-line bg-surface p-4 shadow-panel">
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               <label className="grid gap-1 text-sm">
                 <span className="font-medium">Project Title</span>
@@ -932,7 +945,7 @@ export function App() {
             {tabs.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
-                className={`inline-flex shrink-0 items-center gap-2 rounded-md border px-3 py-2 text-sm ${activeTab === id ? "border-ink bg-ink text-white" : "border-line bg-white"}`}
+                className={`inline-flex shrink-0 items-center gap-2 rounded-md border px-3 py-2 text-sm ${activeTab === id ? "border-teal bg-teal text-white" : "border-line bg-surface text-ink hover:border-teal hover:text-teal"}`}
                 onClick={() => setActiveTab(id)}
               >
                 <Icon size={16} /> {label}
@@ -940,7 +953,7 @@ export function App() {
             ))}
           </nav>
 
-          <div ref={workspaceRef} className="mt-4 rounded-lg border border-line bg-white p-4 shadow-panel">
+          <div ref={workspaceRef} className="mt-4 rounded-lg border border-line bg-surface p-4 shadow-panel">
             {activeTab === "overview" && (
               <Overview evidence={evidence} assumptions={assumptions} totals={totals} premortems={premortems} />
             )}
@@ -1064,7 +1077,7 @@ export function App() {
           </div>
         </section>
 
-        <aside className="rounded-lg border border-line bg-white p-4 shadow-panel lg:col-start-2 2xl:col-start-auto 2xl:sticky 2xl:top-4 2xl:max-h-[calc(100vh-2rem)] 2xl:overflow-auto">
+        <aside className="rounded-lg border border-line bg-surface p-4 shadow-panel lg:col-start-2 2xl:col-start-auto 2xl:sticky 2xl:top-4 2xl:max-h-[calc(100vh-2rem)] 2xl:overflow-auto">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-2">
               <h2 className="text-sm font-semibold uppercase text-moss">Brief Preview</h2>
@@ -1084,13 +1097,13 @@ export function App() {
               <span className={briefDisplayMode === "markdown" ? "font-semibold" : "text-moss"}>Markdown</span>
             </div>
           </div>
-          <div className="mt-3 rounded-md border border-line bg-paper p-3 text-sm">
+          <div className="mt-3 rounded-md border border-line bg-surface-soft p-3 text-sm">
             <p className="font-semibold">{project.title}</p>
             <p className="mt-2 text-moss">{project.decisionQuestion}</p>
             <p className="mt-3">Recommendation: <strong>{totals[0]?.optionName ?? "Not scored"}</strong></p>
           </div>
           {briefDisplayMode === "markdown" ? (
-            <pre className="mt-3 max-h-96 overflow-auto whitespace-pre-wrap break-words rounded-md border border-line bg-white p-3 text-xs leading-5">
+            <pre className="mt-3 max-h-96 overflow-auto whitespace-pre-wrap break-words rounded-md border border-line bg-surface p-3 text-xs leading-5">
               {activePreviewBrief}
             </pre>
           ) : (
@@ -1103,7 +1116,7 @@ export function App() {
             <Metric label="Weights" value={`${getWeightTotal(criteria)}%`} warning={!weightsAreValid(criteria)} />
             <Metric label="Top risks" value={premortems.length.toString()} />
           </div>
-          <button className="mt-4 w-full rounded-md bg-ink px-3 py-2 text-sm font-medium text-white" onClick={() => downloadText(`${project.title.split(" ").join("-").toLowerCase()}-${briefPreviewMode}-brief.md`, activePreviewBrief)}>
+          <button className="mt-4 w-full rounded-md bg-teal px-3 py-2 text-sm font-medium text-white hover:bg-teal-2" onClick={() => downloadText(`${project.title.split(" ").join("-").toLowerCase()}-${briefPreviewMode}-brief.md`, activePreviewBrief)}>
             Export {briefPreviewMode === "executive" ? "Executive" : "Detailed"} Brief
           </button>
         </aside>
@@ -1244,7 +1257,7 @@ function BackupReminder({
   onDismiss: () => void;
 }) {
   return (
-    <section className="mb-4 rounded-lg border border-gold bg-gold/10 p-4 shadow-panel">
+    <section className="mb-4 rounded-lg border border-gold bg-gold-soft p-4 shadow-panel">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold uppercase text-gold">Backup recommended</h2>
@@ -1253,10 +1266,10 @@ function BackupReminder({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button className="inline-flex items-center gap-2 rounded-md bg-ink px-3 py-2 text-sm font-medium text-white" onClick={onExport}>
+          <button className="inline-flex items-center gap-2 rounded-md bg-teal px-3 py-2 text-sm font-medium text-white hover:bg-teal-2" onClick={onExport}>
             <Download size={16} /> Download Backup JSON
           </button>
-          <button className="rounded-md border border-line bg-white px-3 py-2 text-sm" onClick={onDismiss}>
+          <button className="rounded-md border border-line bg-surface px-3 py-2 text-sm" onClick={onDismiss}>
             Dismiss
           </button>
         </div>
@@ -1280,7 +1293,7 @@ function ExportWorkspaceModal({
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-      <div className="w-full max-w-lg rounded-lg bg-white p-4 shadow-panel">
+      <div className="w-full max-w-lg rounded-lg bg-surface p-4 shadow-panel">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold">Export Workspace JSON</h2>
@@ -1306,7 +1319,7 @@ function ExportWorkspaceModal({
           <button className="rounded-md border border-line px-3 py-2 text-sm" onClick={onCancel}>
             Cancel
           </button>
-          <button className="inline-flex items-center gap-2 rounded-md bg-ink px-3 py-2 text-sm font-medium text-white" onClick={onExport}>
+          <button className="inline-flex items-center gap-2 rounded-md bg-teal px-3 py-2 text-sm font-medium text-white hover:bg-teal-2" onClick={onExport}>
             <Download size={16} /> Export JSON
           </button>
         </div>
@@ -1345,7 +1358,7 @@ function BulkUploadPanel({
   onPurge: () => void;
 }) {
   return (
-    <section className="mb-4 rounded-lg border border-line bg-white p-4 shadow-panel">
+    <section className="mb-4 rounded-lg border border-line bg-surface p-4 shadow-panel">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold">Bulk Document Ingestion</h2>
@@ -1367,7 +1380,7 @@ function BulkUploadPanel({
             />
           </label>
           <button
-            className="inline-flex items-center gap-2 rounded-md bg-ink px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-md bg-teal px-3 py-2 text-sm font-medium text-white hover:bg-teal-2 disabled:cursor-not-allowed disabled:opacity-50"
             disabled={aiProgress.isRunning || !openRouterKeyPresent}
             title={openRouterKeyPresent ? "Run AI analysis on retained extracted text" : "Add a session OpenRouter API key in Settings before running AI Analysis"}
             onClick={onRunAi}
@@ -1379,7 +1392,7 @@ function BulkUploadPanel({
           </button>
         </div>
       </div>
-      <div className={`mt-3 rounded-md border p-3 text-sm ${openRouterKeyPresent ? "border-line bg-paper" : "border-gold bg-gold/10"}`}>
+      <div className={`mt-3 rounded-md border p-3 text-sm ${openRouterKeyPresent ? "border-line bg-surface-soft" : "border-gold bg-gold-soft"}`}>
         {openRouterKeyPresent ? (
           <p><strong>OpenRouter model for AI Analysis:</strong> {selectedOpenRouterModel}</p>
         ) : (
@@ -1388,7 +1401,7 @@ function BulkUploadPanel({
           </p>
         )}
       </div>
-      <div className="mt-3 flex items-start gap-3 rounded-md border border-line bg-paper p-3 text-sm">
+      <div className="mt-3 flex items-start gap-3 rounded-md border border-line bg-surface-soft p-3 text-sm">
         <ToggleSwitch enabled={webSearchEnabled} onChange={onWebSearchEnabled} label="Allow Web Search During Analysis" disabled={!openRouterKeyPresent} />
         <div className="copy-block">
           <span className="block font-semibold">Allow Web Search During Analysis</span>
@@ -1399,12 +1412,12 @@ function BulkUploadPanel({
         </div>
       </div>
       {(uploadStatus || aiError) && (
-        <div className={`mt-3 rounded-md border p-3 text-sm ${aiError ? "border-rust bg-rust/5 text-rust" : "border-line bg-paper"}`}>
+        <div className={`mt-3 rounded-md border p-3 text-sm ${aiError ? "border-danger bg-danger-soft text-danger" : "border-line bg-surface-soft"}`}>
           {aiError || uploadStatus}
         </div>
       )}
       {(aiProgress.isRunning || aiProgress.label) && (
-        <div className={`mt-3 rounded-md border p-3 text-sm ${aiProgress.label === "Analysis failed." ? "border-rust bg-rust/5 text-rust" : "border-line bg-white"}`}>
+        <div className={`mt-3 rounded-md border p-3 text-sm ${aiProgress.label === "Analysis failed." ? "border-danger bg-danger-soft text-danger" : "border-line bg-surface"}`}>
           <div className="flex items-center justify-between gap-3">
             <span className="font-medium">{aiProgress.label}</span>
             <span>{aiProgress.percent}%</span>
@@ -1428,7 +1441,7 @@ function BulkUploadPanel({
                   <strong>{document.fileName}</strong>
                   <span>{document.chunkCount} chunks / {document.textRetained ? "text retained" : "text purged"}</span>
                 </div>
-                {document.limitationNote && <p className="mt-1 text-rust">{document.limitationNote}</p>}
+                {document.limitationNote && <p className="mt-1 text-danger">{document.limitationNote}</p>}
               </div>
             ))}
           </div>
@@ -1467,15 +1480,15 @@ function StructuredAiReviewQueue({
   }, [activeCandidate, activeCandidateId]);
 
   return (
-    <div className="mt-4 rounded-md border border-gold bg-gold/10">
-      <div className="border-b border-gold/40 p-4">
+    <div className="mt-4 rounded-md border border-gold bg-gold-soft">
+      <div className="border-b border-gold p-4">
         <h2 className="text-lg font-semibold">AI Review Queue</h2>
         <p className="copy-block mt-1 text-sm text-moss">
           AI outputs are staged for human review. Edit any field before accepting if the analysis is useful but needs correction. Edited candidates are labelled as AI generated with user modifications.
         </p>
       </div>
       <div className="grid min-h-[520px] gap-0 lg:grid-cols-[320px_minmax(0,1fr)]">
-        <aside className="max-h-[720px] overflow-auto border-b border-gold/40 bg-white p-3 lg:border-b-0 lg:border-r">
+        <aside className="max-h-[720px] overflow-auto border-b border-gold bg-surface p-3 lg:border-b-0 lg:border-r">
           <h3 className="text-sm font-semibold uppercase text-moss">Review Tasklist</h3>
           <div className="mt-2 grid gap-2">
             {kinds.map((kind) => {
@@ -1484,7 +1497,7 @@ function StructuredAiReviewQueue({
               return (
                 <button
                   key={kind}
-                  className={`rounded-md border p-2 text-left text-sm ${activeKind === kind ? "border-ink bg-paper" : "border-line bg-white"}`}
+                  className={`rounded-md border p-2 text-left text-sm ${activeKind === kind ? "border-teal bg-teal-soft" : "border-line bg-surface"}`}
                   onClick={() => setActiveKind(kind)}
                 >
                   <span className="block font-medium">{formatCandidateKind(kind)}</span>
@@ -1499,7 +1512,7 @@ function StructuredAiReviewQueue({
               {activePending.map((candidate) => (
                 <button
                   key={candidate.id}
-                  className={`rounded-md border px-2 py-1 text-left text-xs ${activeCandidate?.id === candidate.id ? "border-ink bg-paper" : "border-line bg-white"}`}
+                  className={`rounded-md border px-2 py-1 text-left text-xs ${activeCandidate?.id === candidate.id ? "border-teal bg-teal-soft" : "border-line bg-surface"}`}
                   onClick={() => setActiveCandidateId(candidate.id)}
                 >
                   {getCandidateShortName(candidate)}
@@ -1510,9 +1523,9 @@ function StructuredAiReviewQueue({
           </div>
         </aside>
         <div className="min-w-0 p-4">
-          {!activeCandidate && <div className="rounded-md border border-line bg-white p-4 text-sm">No pending {formatCandidateKind(activeKind)} items. Select another category or upload more documents.</div>}
+          {!activeCandidate && <div className="rounded-md border border-line bg-surface p-4 text-sm">No pending {formatCandidateKind(activeKind)} items. Select another category or upload more documents.</div>}
           {activeCandidate && (
-            <div id={activeCandidate.id} className="rounded-md border border-line bg-white p-4 text-sm">
+            <div id={activeCandidate.id} className="rounded-md border border-line bg-surface p-4 text-sm">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex flex-wrap items-center gap-2">
                   <strong>{getCandidateShortName(activeCandidate)}</strong>
@@ -1523,7 +1536,7 @@ function StructuredAiReviewQueue({
               <CandidateEditor candidate={activeCandidate} sourceTypes={sourceTypes} onAddSourceType={onAddSourceType} onUpdate={onUpdate} />
               {activeCandidate.sourceReference && <p className="mt-2 text-moss">Source: {activeCandidate.sourceReference}</p>}
               <div className="mt-3 flex gap-2">
-                <button className="rounded-md bg-ink px-3 py-2 text-sm font-medium text-white" onClick={() => onAccept(activeCandidate)}>
+                <button className="rounded-md bg-teal px-3 py-2 text-sm font-medium text-white hover:bg-teal-2" onClick={() => onAccept(activeCandidate)}>
                   Accept
                 </button>
                 <button className="rounded-md border border-line px-3 py-2 text-sm" onClick={() => onReject(activeCandidate.id)}>
@@ -1621,7 +1634,7 @@ function CandidateEditor({
         ))}
       </div>
       {candidate.kind === "Evidence" && (
-        <div className="rounded-md border border-line bg-paper p-3">
+        <div className="rounded-md border border-line bg-surface-soft p-3">
           <label className="grid gap-1 text-sm">
             <span className="font-medium">Source Category</span>
             <select
@@ -1634,11 +1647,11 @@ function CandidateEditor({
             </select>
           </label>
           {!sourceTypeKnown && canonicalCandidateSourceType && (
-            <div className="mt-2 rounded-md border border-gold bg-gold/10 p-2 text-sm">
+            <div className="mt-2 rounded-md border border-gold bg-gold-soft p-2 text-sm">
               <p>Suggested new category: <strong>{formatSourceType(canonicalCandidateSourceType)}</strong></p>
               <div className="mt-2 flex flex-wrap gap-2">
                 <button
-                  className="rounded-md bg-ink px-3 py-2 text-sm font-medium text-white"
+                  className="rounded-md bg-teal px-3 py-2 text-sm font-medium text-white hover:bg-teal-2"
                   onClick={() => {
                     if (onAddSourceType(canonicalCandidateSourceType)) updatePayload("sourceType", canonicalCandidateSourceType);
                   }}
@@ -1679,7 +1692,7 @@ function getCandidateFields(kind: AiCandidate["kind"]): { key: string; label: st
 function ProvenanceBadge({ provenance }: { provenance?: "User" | "AI" | "AIEdited" }) {
   const fullLabel = provenance === "AI" ? "AI Generated" : provenance === "AIEdited" ? "AI Generated, User Edited" : "User Input";
   const compactLabel = provenance === "AI" ? "AI" : provenance === "AIEdited" ? "AI Edited" : "User";
-  const tone = provenance === "AI" ? "border-teal/30 bg-teal/10 text-teal" : provenance === "AIEdited" ? "border-gold/40 bg-gold/10 text-gold" : "border-line bg-paper text-moss";
+  const tone = provenance === "AI" ? "border-teal bg-teal-soft text-teal" : provenance === "AIEdited" ? "border-gold bg-gold-soft text-gold" : "border-line bg-surface-soft text-moss";
   return <span title={fullLabel} className={`inline-flex shrink-0 whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-medium leading-5 ${tone}`}>{compactLabel}</span>;
 }
 
@@ -1693,14 +1706,14 @@ export function AiReviewQueue({
   onReject: (id: string) => void;
 }) {
   return (
-    <div className="mt-4 rounded-md border border-gold bg-gold/10 p-4">
+    <div className="mt-4 rounded-md border border-gold bg-gold-soft p-4">
       <h2 className="text-lg font-semibold">AI Review Queue</h2>
       <p className="copy-block mt-1 text-sm text-moss">
         AI outputs are staged for human review. Accepting a candidate commits it into the project and records the change in the decision log.
       </p>
       <div className="mt-3 grid gap-3">
         {candidates.map((candidate) => (
-          <div key={candidate.id} className="rounded-md border border-line bg-white p-3 text-sm">
+          <div key={candidate.id} className="rounded-md border border-line bg-surface p-3 text-sm">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <strong>{formatCandidateKind(candidate.kind)}</strong>
               <span>{candidate.confidence} confidence · {candidate.sourceFileName ?? "No file"}</span>
@@ -1708,7 +1721,7 @@ export function AiReviewQueue({
             <p className="mt-2">{candidate.rationale}</p>
             {candidate.whyBetter && <p className="mt-2 text-moss">Why better: {candidate.whyBetter}</p>}
             {candidate.sourceReference && <p className="mt-1 text-moss">Source: {candidate.sourceReference}</p>}
-            <div className="mt-2 grid gap-2 rounded-md bg-paper p-3">
+            <div className="mt-2 grid gap-2 rounded-md bg-surface-soft p-3">
               {Object.entries(candidate.payload as Record<string, unknown>).map(([key, value]) => (
                 <div key={key}>
                   <span className="font-medium">{key.replace(/([a-z])([A-Z])/g, "$1 $2")}: </span>
@@ -1717,7 +1730,7 @@ export function AiReviewQueue({
               ))}
             </div>
             <div className="mt-3 flex gap-2">
-              <button className="rounded-md bg-ink px-3 py-2 text-sm font-medium text-white" onClick={() => onAccept(candidate)}>
+              <button className="rounded-md bg-teal px-3 py-2 text-sm font-medium text-white hover:bg-teal-2" onClick={() => onAccept(candidate)}>
                 Accept
               </button>
               <button className="rounded-md border border-line px-3 py-2 text-sm" onClick={() => onReject(candidate.id)}>
@@ -1735,7 +1748,7 @@ function Metric({ label, value, warning = false }: { label: string; value: strin
   return (
     <div className="flex items-center justify-between rounded-md border border-line p-3">
       <span>{label}</span>
-      <span className={warning ? "font-semibold text-rust" : "font-semibold"}>{value}</span>
+      <span className={warning ? "font-semibold text-danger" : "font-semibold"}>{value}</span>
     </div>
   );
 }
@@ -1759,12 +1772,12 @@ function ToggleSwitch({
       aria-label={label}
       disabled={disabled}
       className={`switch-track mt-1 inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors ${
-        enabled ? "border-teal bg-teal" : "border-line bg-white"
+        enabled ? "border-teal bg-teal" : "border-line bg-surface"
       } ${disabled ? "cursor-not-allowed opacity-50" : ""}`}
       onClick={() => onChange(!enabled)}
     >
       <span
-        className={`switch-thumb h-5 w-5 rounded-full bg-white shadow transition-transform ${
+        className={`switch-thumb h-5 w-5 rounded-full bg-surface shadow transition-transform ${
           enabled ? "translate-x-5" : "translate-x-0.5"
         }`}
       />
@@ -1807,7 +1820,7 @@ function MarkdownTextView({ markdown, plainText }: { markdown: string; plainText
   }
 
   return (
-    <div className="mt-3 max-h-96 overflow-auto rounded-md border border-line bg-white p-4 text-sm leading-6" aria-label={plainText.slice(0, 120)}>
+    <div className="mt-3 max-h-96 overflow-auto rounded-md border border-line bg-surface p-4 text-sm leading-6" aria-label={plainText.slice(0, 120)}>
       {elements}
     </div>
   );
@@ -1837,7 +1850,7 @@ function MarkdownTable({ lines }: { lines: string[] }) {
   return (
     <div className="my-3 overflow-x-auto rounded-md border border-line">
       <table className="w-full table-fixed text-left text-xs">
-        <thead className="bg-paper">
+        <thead className="bg-surface-soft">
           <tr>
             {headers.map((header) => (
               <th key={header} className="break-words p-2 align-top">{formatInlineMarkdown(header)}</th>
@@ -1876,7 +1889,7 @@ function Overview({ evidence, assumptions, totals, premortems }: { evidence: Evi
         <Metric label="Top option" value={totals[0]?.optionName ?? "None"} />
         <Metric label="Pre-mortem risks" value={premortems.length.toString()} />
       </div>
-      <div className="mt-5 rounded-md border border-line bg-paper p-4 text-sm">
+      <div className="mt-5 rounded-md border border-line bg-surface-soft p-4 text-sm">
         Evidence flows into assumptions, options, weighted scoring, sensitivity checks, pre-mortems, and the executive brief. Claims without evidence remain visible as gaps rather than hidden inside the recommendation.
       </div>
     </div>
@@ -1915,7 +1928,7 @@ function EvidenceWorkspace({ sourceTypes, evidence, onAdd, onUpdate, onDelete }:
                 {confidenceLevels.map((level) => <option key={level}>{level}</option>)}
               </select>
               <input className="w-24 rounded-md border border-line px-3 py-2" type="number" min={1} max={5} value={item.relevance} onChange={(event) => onUpdate(item.id, { relevance: Number(event.target.value) as EvidenceItem["relevance"] })} aria-label="Relevance" />
-              <button className="ml-auto rounded-md border border-line p-2 text-rust" aria-label="Delete evidence" title="Delete evidence" onClick={() => onDelete(item.id)}><Trash2 size={16} /></button>
+              <button className="ml-auto rounded-md border border-line p-2 text-danger" aria-label="Delete evidence" title="Delete evidence" onClick={() => onDelete(item.id)}><Trash2 size={16} /></button>
             </div>
           </div>
         ))}
@@ -1954,8 +1967,8 @@ function EvidenceModal({
   const canSave = draft.sourceTitle.trim() && draft.claim.trim() && draft.implication.trim();
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-ink/40 p-4">
-      <div className="max-h-[92vh] w-full max-w-3xl overflow-auto rounded-lg bg-white p-4 shadow-panel">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
+      <div className="max-h-[92vh] w-full max-w-3xl overflow-auto rounded-lg bg-surface p-4 shadow-panel">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-lg font-semibold">Add Evidence</h2>
           <button className="rounded-md border border-line p-2" aria-label="Close evidence modal" title="Close evidence modal" onClick={onClose}>
@@ -2002,7 +2015,7 @@ function EvidenceModal({
             <input className="rounded-md border border-line px-3 py-2" type="number" min={1} max={5} value={draft.relevance} onChange={(event) => setDraft({ ...draft, relevance: Number(event.target.value) as EvidenceItem["relevance"] })} />
           </label>
         </div>
-        <div className="mt-4 rounded-md border border-line bg-paper p-3">
+        <div className="mt-4 rounded-md border border-line bg-surface-soft p-3">
           <p className="text-sm font-semibold">AI Assist</p>
           <p className="copy-block mt-1 text-sm text-moss">
             Paste source text or upload a text-extractable document. Source URLs are saved as references; browser-side fetching may fail when sites block CORS.
@@ -2021,11 +2034,11 @@ function EvidenceModal({
               <Sparkles size={16} /> Draft with OpenRouter
             </button>
           </div>
-          {!openRouterReady && <p className="mt-2 text-sm text-rust">Add an OpenRouter API key in Settings to enable AI drafting.</p>}
+          {!openRouterReady && <p className="mt-2 text-sm text-danger">Add an OpenRouter API key in Settings to enable AI drafting.</p>}
         </div>
         <div className="mt-4 flex justify-end gap-2">
           <button className="rounded-md border border-line px-3 py-2 text-sm" onClick={onClose}>Cancel</button>
-          <button className="rounded-md bg-ink px-3 py-2 text-sm font-medium text-white disabled:opacity-50" disabled={!canSave} onClick={() => onSave(draft)}>
+          <button className="rounded-md bg-teal px-3 py-2 text-sm font-medium text-white hover:bg-teal-2 disabled:opacity-50" disabled={!canSave} onClick={() => onSave(draft)}>
             Save evidence
           </button>
         </div>
@@ -2053,8 +2066,8 @@ function AddConfigOptionModal({
   const error = !normalized ? "" : duplicate ? "This option already exists. Duplicate checks ignore case and extra spaces." : "";
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-ink/40 p-4">
-      <div className="w-full max-w-md rounded-lg bg-white p-4 shadow-panel">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
+      <div className="w-full max-w-md rounded-lg bg-surface p-4 shadow-panel">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-lg font-semibold">{title}</h2>
           <button className="rounded-md border border-line p-2" aria-label="Close dialog" title="Close dialog" onClick={onClose}>
@@ -2064,18 +2077,18 @@ function AddConfigOptionModal({
         <label className="mt-4 grid gap-1 text-sm">
           <span className="font-medium">Option name</span>
           <input
-            className={`rounded-md border px-3 py-2 ${error ? "border-rust" : "border-line"}`}
+            className={`rounded-md border px-3 py-2 ${error ? "border-danger" : "border-line"}`}
             value={value}
             placeholder={helperText}
             onChange={(event) => setValue(event.target.value)}
             autoFocus
           />
         </label>
-        {error && <p className="mt-2 text-sm text-rust">{error}</p>}
+        {error && <p className="mt-2 text-sm text-danger">{error}</p>}
         <div className="mt-4 flex justify-end gap-2">
           <button className="rounded-md border border-line px-3 py-2 text-sm" onClick={onClose}>Cancel</button>
           <button
-            className="rounded-md bg-ink px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+            className="rounded-md bg-teal px-3 py-2 text-sm font-medium text-white hover:bg-teal-2 disabled:opacity-50"
             disabled={!normalized || duplicate}
             onClick={() => onSave(normalized)}
           >
@@ -2102,14 +2115,14 @@ function ConfirmDialog({
 }) {
   const [busy, setBusy] = useState(false);
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-ink/40 p-4">
-      <div className="w-full max-w-md rounded-lg bg-white p-4 shadow-panel">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
+      <div className="w-full max-w-md rounded-lg bg-surface p-4 shadow-panel">
         <h2 className="text-lg font-semibold">{title}</h2>
         <p className="mt-2 text-sm text-moss">{body}</p>
         <div className="mt-4 flex justify-end gap-2">
           <button className="rounded-md border border-line px-3 py-2 text-sm" disabled={busy} onClick={onCancel}>Cancel</button>
           <button
-            className="rounded-md bg-ink px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+            className="rounded-md bg-teal px-3 py-2 text-sm font-medium text-white hover:bg-teal-2 disabled:opacity-50"
             disabled={busy}
             onClick={async () => {
               setBusy(true);
@@ -2144,19 +2157,19 @@ function GlobalSettingsModal({
     { id: "sources", label: "Source Categories" }
   ];
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-ink/40 p-4 pt-6">
-      <div className="flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg bg-white shadow-panel">
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 pt-6">
+      <div className="flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg bg-surface shadow-panel">
         <div className="shrink-0 flex items-center justify-between border-b border-line p-4">
           <h2 className="text-lg font-semibold">Settings and Configuration</h2>
           <button className="rounded-md border border-line p-2" aria-label="Close settings" title="Close settings" onClick={onClose}><X size={16} /></button>
         </div>
         <div className="grid min-h-0 grid-cols-1 overflow-hidden md:grid-cols-[220px_minmax(0,1fr)]">
-          <aside className="border-b border-line bg-paper p-3 md:border-b-0 md:border-r">
+          <aside className="border-b border-line bg-surface-soft p-3 md:border-b-0 md:border-r">
             <div className="grid gap-2">
               {sections.map((section) => (
                 <button
                   key={section.id}
-                  className={`rounded-md border px-3 py-2 text-left text-sm ${activeSection === section.id ? "border-ink bg-white" : "border-line bg-paper"}`}
+                  className={`rounded-md border px-3 py-2 text-left text-sm ${activeSection === section.id ? "border-teal bg-surface" : "border-line bg-surface-soft"}`}
                   onClick={() => onSection(section.id)}
                 >
                   {section.label}
@@ -2177,7 +2190,7 @@ function AssumptionsWorkspace({ assumptions, evidence, onAdd, onUpdate }: { assu
       <WorkspaceHeader title="Assumption Ledger" action="Add assumption" onAction={onAdd} />
       <div className="mt-4 grid gap-3">
         {assumptions.map((item) => (
-          <div key={item.id} className={`rounded-md border p-3 ${item.impact === "High" && item.confidence === "Low" ? "border-rust bg-rust/5" : "border-line"}`}>
+          <div key={item.id} className={`rounded-md border p-3 ${item.impact === "High" && item.confidence === "Low" ? "border-danger bg-danger-soft" : "border-line"}`}>
             <div className="mb-2 flex justify-end">
               <ProvenanceBadge provenance={item.provenance ?? "User"} />
             </div>
@@ -2243,10 +2256,10 @@ function DecisionModelWorkspace({
   return (
     <div>
       <WorkspaceHeader title="Option Scoring Matrix" action="Add option" onAction={onAddOption} secondaryAction="Add criterion" onSecondaryAction={onAddCriterion} />
-      <p className={`mt-3 text-sm ${weightsAreValid(criteria) ? "text-moss" : "text-rust"}`}>Criteria weights total {getWeightTotal(criteria)}%. Weights must sum to 100% for a valid recommendation.</p>
+      <p className={`mt-3 text-sm ${weightsAreValid(criteria) ? "text-moss" : "text-danger"}`}>Criteria weights total {getWeightTotal(criteria)}%. Weights must sum to 100% for a valid recommendation.</p>
       <div className="mt-4 overflow-x-auto rounded-md border border-line">
         <table className="min-w-[760px] w-full text-sm">
-          <thead className="bg-paper">
+          <thead className="bg-surface-soft">
             <tr>
               <th className="p-2 text-left">Option</th>
               {criteria.map((criterion) => (
@@ -2259,7 +2272,7 @@ function DecisionModelWorkspace({
                       <input className="mb-1 w-full rounded border border-line px-2 py-1" value={criterion.name} onChange={(event) => onUpdate({ ...store, criteria: store.criteria.map((item) => item.id === criterion.id ? { ...item, name: event.target.value } : item) })} aria-label="Criterion name" />
                       <input className="w-20 rounded border border-line px-2 py-1" type="number" value={criterion.weight} onChange={(event) => onUpdate({ ...store, criteria: store.criteria.map((item) => item.id === criterion.id ? { ...item, weight: Number(event.target.value) } : item) })} aria-label="Criterion weight" />%
                     </div>
-                    <button className="rounded border border-line p-1 text-rust" aria-label={`Delete criterion ${criterion.name}`} title={`Delete criterion ${criterion.name}`} onClick={() => onDeleteCriterion(criterion)}>
+                    <button className="rounded border border-line p-1 text-danger" aria-label={`Delete criterion ${criterion.name}`} title={`Delete criterion ${criterion.name}`} onClick={() => onDeleteCriterion(criterion)}>
                       <Trash2 size={14} />
                     </button>
                   </div>
@@ -2274,7 +2287,7 @@ function DecisionModelWorkspace({
                 <td className="p-2">
                   <div className="flex gap-2">
                     <input className="min-w-0 flex-1 rounded border border-line px-2 py-1 font-medium" value={option.name} onChange={(event) => onUpdate({ ...store, options: store.options.map((item) => item.id === option.id ? { ...item, name: event.target.value } : item) })} aria-label="Option name" />
-                    <button className="rounded border border-line p-1 text-rust" aria-label={`Delete option ${option.name}`} title={`Delete option ${option.name}`} onClick={() => onDeleteOption(option)}>
+                    <button className="rounded border border-line p-1 text-danger" aria-label={`Delete option ${option.name}`} title={`Delete option ${option.name}`} onClick={() => onDeleteOption(option)}>
                       <Trash2 size={14} />
                     </button>
                   </div>
@@ -2423,8 +2436,8 @@ function SensitivityWorkspace({ options, criteria, scores }: { options: Decision
           <datalist id="sensitivity-steps">
             {[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((value) => <option key={value} value={value} label={`${value}%`} />)}
           </datalist>
-          {invalidTotal && <p className="rounded-md border border-rust bg-rust/5 p-3 text-sm text-rust">Selected adjusted weights exceed 100%. Lower one or more selected criteria before using this scenario.</p>}
-          <div className={`rounded-md border p-4 ${recommendationChanged ? "border-rust bg-rust/5" : "border-line bg-paper"}`}>
+          {invalidTotal && <p className="rounded-md border border-danger bg-danger-soft p-3 text-sm text-danger">Selected adjusted weights exceed 100%. Lower one or more selected criteria before using this scenario.</p>}
+          <div className={`rounded-md border p-4 ${recommendationChanged ? "border-danger bg-danger-soft" : "border-line bg-surface-soft"}`}>
             <p className="font-semibold">{recommendationChanged ? "Recommendation flips" : "Recommendation holds"}</p>
             <p className="mt-1 text-sm">
               {invalidTotal
@@ -2453,7 +2466,7 @@ function PremortemWorkspace({ premortems, onAdd, onUpdate }: { premortems: Premo
   return (
     <div>
       <WorkspaceHeader title="Pre-Mortem Builder" action="Add Risk" onAction={onAdd} />
-      <div className="copy-block mt-3 rounded-md border border-line bg-paper p-3 text-sm text-moss">
+      <div className="copy-block mt-3 rounded-md border border-line bg-surface-soft p-3 text-sm text-moss">
         Likelihood and severity use a 1-5 scale: 1 is very low, 3 is moderate, and 5 is very high. A 1-5 scale is used instead of 0-10 because it matches the app's evidence relevance and option scoring scales, reduces false precision, and keeps risk scores easy to compare.
       </div>
       <div className="mt-4 grid gap-3">
@@ -2497,16 +2510,16 @@ function FinancialWorkspace({ csvRows, xField, yField, chartType, numericFields,
           <div className="mt-4 h-72 rounded-md border border-line p-3">
             <ResponsiveContainer width="100%" height="100%">
               {chartType === "line" ? (
-                <LineChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey={xField} /><YAxis /><Tooltip /><Line type="monotone" dataKey={yField} stroke="#2d736f" strokeWidth={2} /></LineChart>
+                <LineChart data={chartData}><CartesianGrid strokeDasharray="3 3" stroke="var(--stratis-chart-grid)" /><XAxis dataKey={xField} tick={chartAxisStyle} /><YAxis tick={chartAxisStyle} /><Tooltip {...chartTooltipProps} /><Line type="monotone" dataKey={yField} stroke="var(--stratis-chart-primary)" strokeWidth={2} /></LineChart>
               ) : (
-                <BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey={xField} /><YAxis /><Tooltip /><Bar dataKey={yField} fill="#a44f2f" /></BarChart>
+                <BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" stroke="var(--stratis-chart-grid)" /><XAxis dataKey={xField} tick={chartAxisStyle} /><YAxis tick={chartAxisStyle} /><Tooltip {...chartTooltipProps} /><Bar dataKey={yField} fill="var(--stratis-chart-highlight)" /></BarChart>
               )}
             </ResponsiveContainer>
           </div>
           {summary && <p className="mt-3 text-sm">Summary: {summary.field} average {summary.average}; min {summary.min}; max {summary.max}; count {summary.count}.</p>}
-          <button className="mt-3 rounded-md bg-ink px-3 py-2 text-sm font-medium text-white" onClick={onSaveInsight}>Save chart insight as evidence</button>
+          <button className="mt-3 rounded-md bg-teal px-3 py-2 text-sm font-medium text-white hover:bg-teal-2" onClick={onSaveInsight}>Save chart insight as evidence</button>
           <div className="mt-4 overflow-x-auto rounded-md border border-line">
-            <table className="min-w-[640px] w-full text-sm"><thead className="bg-paper"><tr>{fields.map((field) => <th key={field} className="p-2 text-left">{field}</th>)}</tr></thead><tbody>{csvRows.slice(0, 6).map((row, index) => <tr key={index} className="border-t border-line">{fields.map((field) => <td key={field} className="p-2">{row[field]}</td>)}</tr>)}</tbody></table>
+            <table className="min-w-[640px] w-full text-sm"><thead className="bg-surface-soft"><tr>{fields.map((field) => <th key={field} className="p-2 text-left">{field}</th>)}</tr></thead><tbody>{csvRows.slice(0, 6).map((row, index) => <tr key={index} className="border-t border-line">{fields.map((field) => <td key={field} className="p-2">{row[field]}</td>)}</tr>)}</tbody></table>
           </div>
         </>
       )}
@@ -2519,10 +2532,10 @@ function BriefWorkspace({ brief, project }: { brief: string; project: Project })
   return (
     <div>
       <WorkspaceHeader title="Executive Brief Generator" action="Export Markdown" onAction={() => downloadText(`${project.title.split(" ").join("-").toLowerCase()}-brief.md`, brief)} secondaryAction="Print" onSecondaryAction={() => window.print()} />
-      <div className="mt-3 rounded-md border border-gold bg-gold/10 p-3 text-sm">
+      <div className="mt-3 rounded-md border border-gold bg-gold-soft p-3 text-sm">
         Template mode is deterministic and works without an API key. Do not paste confidential material into this public-static demo. Optional BYO API key mode should remain session-only and is intentionally not required for v0.1.
       </div>
-      <pre className="mt-4 whitespace-pre-wrap rounded-md border border-line bg-paper p-4 text-sm leading-6">{brief}</pre>
+      <pre className="mt-4 whitespace-pre-wrap rounded-md border border-line bg-surface-soft p-4 text-sm leading-6">{brief}</pre>
     </div>
   );
 }
@@ -2558,11 +2571,11 @@ function ProjectSettingsWorkspace({
       <p className="copy-block mt-1 text-sm text-moss">
         Project-level settings are limited to local destructive actions. Global OpenRouter, project type, project status, and source category configuration lives in the top Settings dialog.
       </p>
-      <div className="mt-4 grid gap-3 rounded-md border border-line bg-paper p-4 text-sm">
-        <button className="inline-flex w-fit items-center gap-2 rounded-md border border-rust px-3 py-2 text-rust" onClick={onClear}>
+      <div className="mt-4 grid gap-3 rounded-md border border-line bg-surface-soft p-4 text-sm">
+        <button className="inline-flex w-fit items-center gap-2 rounded-md border border-danger px-3 py-2 text-danger" onClick={onClear}>
           <Trash2 size={16} /> Clear Local Data
         </button>
-        <button className="inline-flex w-fit items-center gap-2 rounded-md border border-rust px-3 py-2 text-rust" onClick={onDeleteProject}>
+        <button className="inline-flex w-fit items-center gap-2 rounded-md border border-danger px-3 py-2 text-danger" onClick={onDeleteProject}>
           <Trash2 size={16} /> Delete Current Project
         </button>
       </div>
@@ -2641,7 +2654,7 @@ function SettingsWorkspace({
         {activeSection === "openrouter" && (
           <div className="rounded-md border border-line p-4">
             <h3 className="font-semibold">OpenRouter</h3>
-            <div className="copy-block mt-3 rounded-md border border-gold bg-gold/10 p-3 text-sm">
+            <div className="copy-block mt-3 rounded-md border border-gold bg-gold-soft p-3 text-sm">
               OpenRouter API keys are stored only in this browser session. They are not committed to GitHub, included in JSON exports, or retained after the session ends.
             </div>
             <div className="mt-3 grid gap-3 lg:grid-cols-2">
@@ -2669,7 +2682,7 @@ function SettingsWorkspace({
               )}
             </div>
             {(modelRefreshStatus || modelRefreshError) && (
-              <div className={`mt-3 rounded-md border p-3 text-sm ${modelRefreshError ? "border-rust bg-rust/5 text-rust" : "border-line bg-paper"}`}>
+              <div className={`mt-3 rounded-md border p-3 text-sm ${modelRefreshError ? "border-danger bg-danger-soft text-danger" : "border-line bg-surface-soft"}`}>
                 {modelRefreshError || modelRefreshStatus}
               </div>
             )}
@@ -2750,7 +2763,7 @@ function DataStorageSettings({
             Stratis runs as a static GitHub Pages app. Each visitor gets an independent browser-local workspace for this site origin. No project data is sent to GitHub, and no server account is created.
           </p>
         </div>
-        <button className="inline-flex items-center gap-2 rounded-md bg-ink px-3 py-2 text-sm font-medium text-white" onClick={onExportJson}>
+        <button className="inline-flex items-center gap-2 rounded-md bg-teal px-3 py-2 text-sm font-medium text-white hover:bg-teal-2" onClick={onExportJson}>
           <Download size={16} /> Export Workspace JSON
         </button>
       </div>
@@ -2762,7 +2775,7 @@ function DataStorageSettings({
       </div>
 
       <div className="mt-4 grid gap-3 lg:grid-cols-2">
-        <div className="rounded-md border border-line bg-paper p-3 text-sm">
+        <div className="rounded-md border border-line bg-surface-soft p-3 text-sm">
           <h4 className="font-semibold">Stored on this browser</h4>
           <ul className="mt-2 list-disc space-y-1 pl-5">
             <li>Projects, configuration, evidence, assumptions, options, scores, pre-mortems, decision logs, chart insights, and AI review candidates.</li>
@@ -2770,7 +2783,7 @@ function DataStorageSettings({
             <li>Data is saved with IndexedDB and mirrored through local browser storage for resilience.</li>
           </ul>
         </div>
-        <div className="rounded-md border border-line bg-paper p-3 text-sm">
+        <div className="rounded-md border border-line bg-surface-soft p-3 text-sm">
           <h4 className="font-semibold">Not stored in the repository</h4>
           <ul className="mt-2 list-disc space-y-1 pl-5">
             <li>Original uploaded files are not retained by the app.</li>
@@ -2780,7 +2793,7 @@ function DataStorageSettings({
         </div>
       </div>
 
-      <div className="mt-4 rounded-md border border-gold bg-gold/10 p-3 text-sm">
+      <div className="mt-4 rounded-md border border-gold bg-gold-soft p-3 text-sm">
         <p className="font-semibold">Document retention and backup workflow</p>
         <p className="mt-1">
           Original uploaded documents are not retained. Extracted text chunks and structured outputs are stored locally for audit and can be purged after AI review. After meaningful edits or AI review, export the workspace JSON. Import that JSON later to continue work on another browser or device. If browser storage is cleared, private browsing is used, or the device changes, local state may not be available without a JSON backup.
@@ -2811,22 +2824,22 @@ function AppearanceSettings({
             Dark mode reduces glare for long strategy review sessions while preserving the same information density, table contrast, and form layout.
           </p>
         </div>
-        <div className="flex items-center gap-3 rounded-md border border-line bg-paper px-3 py-2 text-sm">
+        <div className="flex items-center gap-3 rounded-md border border-line bg-surface-soft px-3 py-2 text-sm">
           <span className={!isDarkMode ? "font-semibold" : "text-moss"}>Light</span>
           <ToggleSwitch enabled={isDarkMode} onChange={onToggle} label="Toggle dark mode" />
           <span className={isDarkMode ? "font-semibold" : "text-moss"}>Dark</span>
         </div>
       </div>
       <div className="mt-4 grid gap-3 md:grid-cols-3">
-        <div className="rounded-md border border-line bg-paper p-3 text-sm">
+        <div className="rounded-md border border-line bg-surface-soft p-3 text-sm">
           <p className="font-semibold">Navigation</p>
           <p className="mt-1 text-moss">High-contrast panels and focus states remain visible for keyboard use.</p>
         </div>
-        <div className="rounded-md border border-line bg-paper p-3 text-sm">
+        <div className="rounded-md border border-line bg-surface-soft p-3 text-sm">
           <p className="font-semibold">Analysis Surfaces</p>
           <p className="mt-1 text-moss">Tables, forms, and brief preview retain neutral contrast instead of decorative color shifts.</p>
         </div>
-        <div className="rounded-md border border-line bg-paper p-3 text-sm">
+        <div className="rounded-md border border-line bg-surface-soft p-3 text-sm">
           <p className="font-semibold">Persistence</p>
           <p className="mt-1 text-moss">The selected mode is saved with this browser-local workspace and included in JSON exports.</p>
         </div>
@@ -2856,9 +2869,9 @@ function ConfigList({
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
         {values.map((value) => (
-          <span key={value} className="inline-flex items-center gap-2 rounded-md border border-line bg-paper px-3 py-2 text-sm">
+          <span key={value} className="inline-flex items-center gap-2 rounded-md border border-line bg-surface-soft px-3 py-2 text-sm">
             {formatValue(value)}
-            <button className="text-rust disabled:text-moss" disabled={values.length <= 1} aria-label={`Delete ${value}`} title={`Delete ${formatValue(value)}`} onClick={() => onDelete(value)}>
+            <button className="text-danger disabled:text-moss" disabled={values.length <= 1} aria-label={`Delete ${value}`} title={`Delete ${formatValue(value)}`} onClick={() => onDelete(value)}>
               <X size={14} />
             </button>
           </span>
@@ -2874,11 +2887,13 @@ function WorkspaceHeader({ title, action, onAction, secondaryAction, onSecondary
       <h2 className="text-lg font-semibold">{title}</h2>
       <div className="flex gap-2">
         {secondaryAction && <button className="rounded-md border border-line px-3 py-2 text-sm" onClick={onSecondaryAction}>{secondaryAction}</button>}
-        {action && <button className="rounded-md bg-ink px-3 py-2 text-sm font-medium text-white" onClick={onAction}>{action}</button>}
+        {action && <button className="rounded-md bg-teal px-3 py-2 text-sm font-medium text-white hover:bg-teal-2" onClick={onAction}>{action}</button>}
       </div>
     </div>
   );
 }
+
+
 
 
 
